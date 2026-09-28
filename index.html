@@ -4,148 +4,155 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>SleekFlow Tracker</title>
-<meta name="description" content="Machino customer enquiries — what customers ask, their concerns, when, and which needed a person.">
+<title>Customer enquiries · Machino</title>
+<meta name="description" content="Machino customer enquiries: what customers ask, their concerns, when, and which chats needed a person.">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4" crossorigin="anonymous"></script>
 <style>
-/* Colours: categorical topics + outcome set validated for colour-blind separation and
-   contrast in both modes (dataviz validator, 28 Sep 2026). Heat map = one-hue blue ramp. */
+/* Plain report style: one font, grey rules, one accent, outcome colours only where outcomes are shown.
+   Outcome colours validated for colour-blind separation and contrast in light and dark (28 Sep 2026). */
 :root {
   color-scheme: light;
-  --bg: #f3f5f9; --card: #ffffff; --ink: #1f2937; --muted: #5f6673; --faint: #8b93a1; --line: #e4e7ee;
-  --brand: #2a78d6; --brand-soft: #e7f0fc; --bar: #5b6b73;
-  --hero-a: #1c5cab; --hero-b: #1baf7a;
-  --ok: #1baf7a; --person: #eb6834; --quiet: #a3a29c; --unknown: #4a3aa7; --alert: #c23b3b; --alert-soft: #fdeaea;
-  --t1: #2a78d6; --t2: #eb6834; --t3: #1baf7a; --t4: #eda100; --t5: #e87ba4; --t6: #008300; --t7: #4a3aa7; --t8: #e34948;
-  --seq-lo: #cde2fb; --seq-hi: #104281; --concern: #4a3aa7;
-  --shadow: 0 1px 2px rgba(16,24,40,.05), 0 2px 6px rgba(16,24,40,.06);
+  --bg: #ffffff; --ink: #1d1d1b; --muted: #5c5b56; --faint: #7a7973; --line: #e2e1dc; --soft: #f6f6f3;
+  --accent: #2a78d6; --bar: #8a8f98;
+  --ok: #1baf7a; --person: #eb6834; --quiet: #a3a29c; --unknown: #4a3aa7; --alert: #b3261e; --alert-bg: #fbeeed;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #111312; --card: #1a1a19; --ink: #f2f2f0; --muted: #c3c2b7; --faint: #8f8e87; --line: #2e2e2b;
-    --brand: #3987e5; --brand-soft: #1b2a3d; --bar: #9fb0b8;
-    --hero-a: #184f95; --hero-b: #199e70;
-    --ok: #199e70; --person: #d95926; --quiet: #6f6e69; --unknown: #9085e9; --alert: #e66767; --alert-soft: #3a1f1f;
-    --t1: #3987e5; --t2: #d95926; --t3: #199e70; --t4: #c98500; --t5: #d55181; --t6: #008300; --t7: #9085e9; --t8: #e66767;
-    --seq-lo: #184f95; --seq-hi: #9ec5f4; --concern: #9085e9; --shadow: none;
+    --bg: #1a1a19; --ink: #f2f2f0; --muted: #c3c2b7; --faint: #a3a29c; --line: #34342f; --soft: #222220;
+    --accent: #3987e5; --bar: #9a9fa8;
+    --ok: #199e70; --person: #d95926; --quiet: #6f6e69; --unknown: #9085e9; --alert: #f28b82; --alert-bg: #3a2322;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #111312; --card: #1a1a19; --ink: #f2f2f0; --muted: #c3c2b7; --faint: #8f8e87; --line: #2e2e2b;
-  --brand: #3987e5; --brand-soft: #1b2a3d; --bar: #9fb0b8;
-  --hero-a: #184f95; --hero-b: #199e70;
-  --ok: #199e70; --person: #d95926; --quiet: #6f6e69; --unknown: #9085e9; --alert: #e66767; --alert-soft: #3a1f1f;
-  --t1: #3987e5; --t2: #d95926; --t3: #199e70; --t4: #c98500; --t5: #d55181; --t6: #008300; --t7: #9085e9; --t8: #e66767;
-  --seq-lo: #184f95; --seq-hi: #9ec5f4; --concern: #9085e9; --shadow: none;
+  --bg: #1a1a19; --ink: #f2f2f0; --muted: #c3c2b7; --faint: #a3a29c; --line: #34342f; --soft: #222220;
+  --accent: #3987e5; --bar: #9a9fa8;
+  --ok: #199e70; --person: #d95926; --quiet: #6f6e69; --unknown: #9085e9; --alert: #f28b82; --alert-bg: #3a2322;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-.wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
-header.top { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: flex-end; justify-content: space-between; margin-bottom: 18px;
-  padding: 22px 24px; border-radius: 16px; color: #fff; background: linear-gradient(120deg, var(--hero-a), var(--hero-b)); box-shadow: var(--shadow); }
-.eyebrow { color: rgba(255,255,255,.85); font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
-h1 { font-size: 28px; margin: 2px 0 0; letter-spacing: -.01em; }
-.sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
-header.top .sub { color: rgba(255,255,255,.9); }
-header.top .sub b { color: #fff; }
-.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-select, button { font: inherit; font-size: 14px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
-header.top select, header.top button { background: rgba(255,255,255,.16); color: #fff; border-color: rgba(255,255,255,.35); }
-header.top select option { color: #1f2937; }
-header.top button:hover, header.top select:hover { background: rgba(255,255,255,.26); }
-button[aria-pressed="true"] { background: var(--brand); color: var(--card); border-color: var(--brand); }
-.banner { border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-weight: 500; }
-.banner.warn { background: var(--alert-soft); color: var(--alert); }
-.grid { display: grid; gap: 16px; }
-.kpis { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 16px; }
-.half { grid-template-columns: 1fr 1fr; }
-@media (max-width: 860px) { .half { grid-template-columns: 1fr; } }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; box-shadow: var(--shadow); min-width: 0; }
-.card h2 { font-size: 17px; margin: 0 0 2px; }
-.card .hint { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
-.todo { color: var(--muted); font-size: 13px; margin: 12px 0 0; padding-top: 10px; border-top: 1px dashed var(--line); }
-.todo b { color: var(--ink); font-weight: 600; }
-.kpi { border-top: 4px solid var(--accent, var(--brand)); background: linear-gradient(180deg, color-mix(in srgb, var(--accent, var(--brand)) 9%, var(--card)), var(--card) 70%); }
-.kpi .label { color: var(--muted); font-size: 13.5px; font-weight: 600; }
-.card h2 .icon { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; margin-right: 8px; font-size: 15px; background: var(--brand-soft); vertical-align: middle; }
-.tdot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: 0; }
-.kpi .value { font-size: 32px; font-weight: 700; margin: 4px 0 2px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.kpi .delta { font-size: 13px; color: var(--muted); }
-.kpi .delta.up { color: var(--brand); } .kpi .delta.down { color: var(--alert); }
-.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
-.chart { position: relative; height: 300px; }
-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; padding: 8px 6px; border-bottom: 1px solid var(--line); }
-td { padding: 9px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 28px 16px 56px; }
+a { color: var(--accent); }
+
+header { border-bottom: 2px solid var(--ink); padding-bottom: 14px; margin-bottom: 16px; }
+.org { font-size: 13px; color: var(--muted); margin: 0; }
+h1 { font-size: 24px; font-weight: 650; margin: 2px 0 4px; letter-spacing: -.01em; }
+.meta { color: var(--muted); font-size: 13px; margin: 0; }
+
+.filters { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; padding: 12px 0 16px; border-bottom: 1px solid var(--line); }
+.field { display: flex; flex-direction: column; gap: 3px; }
+.field label { font-size: 12px; color: var(--muted); }
+select, input[type="date"], button { font: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; height: 34px; }
+button { cursor: pointer; }
+button:hover, select:hover, input[type="date"]:hover { border-color: var(--faint); }
+.spacer { flex: 1; }
+.linkbtn { border: 0; background: none; color: var(--accent); padding: 6px 4px; }
+
+.notice { border-left: 3px solid var(--alert); background: var(--alert-bg); padding: 10px 14px; margin: 16px 0 0; }
+.notice.info { border-left-color: var(--faint); background: var(--soft); }
+.notice p { margin: 2px 0; }
+
+section { padding: 22px 0 6px; border-bottom: 1px solid var(--line); }
+section:last-of-type { border-bottom: 0; }
+h2 { font-size: 16px; font-weight: 650; margin: 0 0 2px; }
+h2 .n { color: var(--faint); font-weight: 500; margin-right: 8px; }
+.lead { color: var(--muted); margin: 0 0 12px; font-size: 13px; }
+
+.summary { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); margin: 12px 0 10px; }
+.summary > div { padding: 12px 14px; border-left: 1px solid var(--line); }
+.summary > div:first-child { border-left: 0; }
+@media (max-width: 720px) { .summary { grid-template-columns: 1fr 1fr; } .summary > div:nth-child(3) { border-left: 0; } .summary > div:nth-child(n+3) { border-top: 1px solid var(--line); } }
+.s-label { font-size: 12.5px; color: var(--muted); }
+.s-value { font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; margin: 2px 0; }
+.s-note { font-size: 12.5px; color: var(--muted); }
+.key { display: inline-block; width: 9px; height: 9px; margin-right: 6px; vertical-align: 0; }
+
+.split { display: flex; height: 10px; margin: 4px 0 6px; background: var(--soft); }
+.split span { display: block; height: 100%; }
+.split span + span { border-left: 2px solid var(--bg); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--muted); }
+
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-weight: 600; font-size: 12.5px; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--ink); }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.bar { height: 10px; border-radius: 5px; background: var(--bar); min-width: 3px; }
-.vs { font-size: 13px; color: var(--muted); white-space: nowrap; }
-.vs.up { color: var(--brand); } .vs.down { color: var(--alert); } .vs.new { color: var(--person); font-weight: 600; }
-.alerts { margin: 0; padding-left: 18px; } .alerts li { margin: 6px 0; }
-.alerts .none { list-style: none; margin-left: -18px; color: var(--ok); }
-.heat { overflow-x: auto; }
-.heat table { border-collapse: separate; border-spacing: 3px; min-width: 640px; }
-.heat td, .heat th { border: 0; padding: 0; text-align: center; font-size: 11px; text-transform: none; letter-spacing: 0; }
-.heat td.cell { height: 26px; border-radius: 4px; }
-.heat th.day { text-align: right; padding-right: 6px; width: 40px; }
-.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); margin-top: 10px; }
-.swatch { width: 22px; height: 12px; border-radius: 3px; display: inline-block; }
-.toggle { display: inline-flex; gap: 6px; margin-bottom: 12px; }
-.note { color: var(--muted); font-size: 13px; margin-top: 10px; }
-.scroll { overflow-x: auto; }
-footer { color: var(--faint); font-size: 12.5px; margin-top: 24px; line-height: 1.7; }
-.loading { text-align: center; padding: 80px 0; color: var(--muted); }
-.section-gap { margin-top: 16px; }
+td.barcell { width: 32%; }
+.bar { height: 8px; background: var(--bar); min-width: 2px; }
+.muted { color: var(--muted); }
+.up { color: var(--ink); } .down { color: var(--ink); }
+.tablewrap { overflow-x: auto; }
+
+.chart { position: relative; height: 260px; margin-top: 4px; }
+.facts { display: flex; flex-wrap: wrap; gap: 6px 28px; margin: 12px 0 4px; }
+.facts b { font-weight: 600; }
+
+.notes { color: var(--muted); font-size: 13px; }
+.notes ul { margin: 6px 0 0; padding-left: 18px; }
+.notes li { margin: 3px 0; }
+.loading { padding: 60px 0; color: var(--muted); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
 @media print {
   :root, :root[data-theme="dark"], :root:not([data-theme="light"]) {
-    --bg: #fff; --card: #fff; --ink: #1f2937; --muted: #4b5563; --faint: #6b7280; --line: #d1d5db;
-    --brand: #2a78d6; --bar: #5b6b73; --ok: #1baf7a; --person: #eb6834; --quiet: #a3a29c; --unknown: #4a3aa7; --alert: #c23b3b; --shadow: none;
-    --t1: #2a78d6; --t2: #eb6834; --t3: #1baf7a; --t4: #eda100; --t5: #e87ba4; --t6: #008300; --t7: #4a3aa7; --t8: #e34948; --seq-lo: #cde2fb; --seq-hi: #104281; --concern: #4a3aa7; --hero-a: #1c5cab; --hero-b: #1baf7a;
+    color-scheme: light; --bg: #fff; --ink: #1d1d1b; --muted: #4a4945; --faint: #6b6a65; --line: #d6d5cf; --soft: #f4f4f1;
+    --accent: #2a78d6; --bar: #7a7f88; --ok: #1baf7a; --person: #eb6834; --quiet: #a3a29c; --unknown: #4a3aa7; --alert: #b3261e; --alert-bg: #fbeeed;
   }
-  .controls, .noprint { display: none !important; }
-  .card { break-inside: avoid; } .wrap { max-width: none; padding: 0; }
+  .filters, .noprint { display: none !important; }
+  section { break-inside: avoid; }
+  .wrap { max-width: none; padding: 0; }
 }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header class="top">
-    <div>
-      <div class="eyebrow">Machino · Customer enquiries</div>
-      <h1 id="periodTitle">Customer Enquiries</h1>
-      <div class="sub" id="updated">Loading…</div>
-    </div>
-    <div class="controls">
-      <label for="period" class="sub" style="margin:0">Show</label>
-      <select id="period" aria-label="Choose the time period"></select>
-      <button id="refresh" title="Load the latest data">↻ Refresh</button>
-      <button id="print" class="noprint" title="Print or save as PDF">Print / PDF</button>
-      <button id="theme" class="noprint" title="Switch light / dark">🌙 Dark</button>
-    </div>
+  <header>
+    <p class="org">Machino · Customer enquiries on WhatsApp</p>
+    <h1 id="title">Customer chats</h1>
+    <p class="meta" id="meta">Loading…</p>
   </header>
 
-  <div id="banner"></div>
-  <div id="app"><div class="loading">Loading the latest enquiries…</div></div>
-  <footer id="footer"></footer>
+  <form class="filters" id="filters" onsubmit="return false">
+    <div class="field">
+      <label for="period">Period</label>
+      <select id="period"></select>
+    </div>
+    <div class="field">
+      <label for="from">From</label>
+      <input type="date" id="from">
+    </div>
+    <div class="field">
+      <label for="to">To</label>
+      <input type="date" id="to">
+    </div>
+    <div class="spacer"></div>
+    <button type="button" id="refresh" class="noprint">Refresh</button>
+    <button type="button" id="print" class="noprint">Print</button>
+    <button type="button" id="theme" class="noprint">Dark mode</button>
+    <p class="sr" aria-live="polite" id="live"></p>
+  </form>
+
+  <div id="notices"></div>
+  <main id="app"><p class="loading">Loading the latest enquiries…</p></main>
 </div>
 
 <script>
 /* ==================================================================== LOGIC-START
    Same counting rules as docs/bot-issue-log/bot-issue-report.gs (the Sheet REPORT).
-   The config below must match BIL_CONFIG there — docs/bot-issue-log/test-dashboard.js checks it.
+   The settings below must match BIL_CONFIG there; docs/bot-issue-log/test-dashboard.js checks it.
    To change: edit BOTH files, then run: node docs/bot-issue-log/test-dashboard.js */
 const CFG = {
   CSV_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSDB8b_yapTLgeVDqHt77yBvh3SpkYObGBpYUH-9rCluDZnnYFzKPgTVXNHqRxac2ze5D_um6Mn4f6W/pub?gid=1264505486&single=true&output=csv',
   REFRESH_MINUTES: 5,          // Google refreshes a published CSV about every 5 minutes
-  STALE_HOURS: 24,             // newest chat older than this → warning
+  STALE_HOURS: 24,             // newest chat older than this: warning
   FETCH_TIMEOUT_S: 20,
   OFFSET_H: 8,                 // Malaysia time
   DATE_FORMAT: 'MDY',          // SleekFlow sends 09/28/2026 07:28:03 +00:00
-  ADMIN_NAME: 'Amani',
+  ADMIN_NAME: 'IT',
   BUSIEST_MIN_CHATS: 20,
   SMALL_TOTAL: 20,             // below this, show "3 of 12" instead of a percentage
+  MAX_RANGE_DAYS: 366,
+  SAMPLE_VERSION: 'FAKE-DATA', // rows with this Flow Version are made-up test data
   COLUMNS: {
     when: ['Date & Time', 'Date/Time', 'DateTime', 'Date', 'LastContactFromCustomers'],
     topics: ['Topics', 'Topic', 'Issue', 'Issues', 'Issue / Topics', 'ChatTopics', 'Bot Topics'],
@@ -191,6 +198,7 @@ const CFG = {
     BOT: ['ended', 'completed', 'resolved', 'finished', 'selfservice'],
   },
   ALERT: { MIN_CHATS: 10, MIN_RISE: 5, MIN_RATIO: 1.5, MIN_DAY_OF_MONTH: 7, SHARE_POINTS: 5, MAX_LINES: 3 },
+  MIN_ALERT_DAYS: 7,           // no "is up" alerts for ranges shorter than this
 };
 const DAY = 86400000;
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -201,7 +209,7 @@ const OTHER_CONCERN = 'Other concern';
 const norm = s => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, '');
 const splitItems = s => String(s == null ? '' : s).split(/→|->|=>|>|\||;|,|\n/).map(x => x.trim()).filter(Boolean);
 
-/** RFC-4180-style CSV → array of rows (quoted commas, "" escapes, CRLF). */
+/** RFC-4180-style CSV to rows (quoted commas, "" escapes, CRLF). */
 function parseCSV(text) {
   const rows = []; let row = []; let field = ''; let q = false;
   for (let i = 0; i < text.length; i++) {
@@ -265,14 +273,33 @@ function parseWhen(value, format) {
 
 const wall = ms => { const d = new Date(ms + CFG.OFFSET_H * 3600000); return { y: d.getUTCFullYear(), m: d.getUTCMonth(), d: d.getUTCDate(), h: d.getUTCHours(), mi: d.getUTCMinutes(), dow: d.getUTCDay() }; };
 const fromWall = (y, m, d, h, mi) => Date.UTC(y, m, d, h || 0, mi || 0) - CFG.OFFSET_H * 3600000;
+const dayStart = ms => { const w = wall(ms); return fromWall(w.y, w.m, w.d); };
+/** "2026-09-15" (Malaysia day) to its start instant; strict, never new Date(string). */
+function isoDay(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3]; const t = new Date(Date.UTC(y, mo - 1, d));
+  if (t.getUTCMonth() !== mo - 1 || t.getUTCDate() !== d) return null;
+  return fromWall(y, mo - 1, d);
+}
+const toIso = ms => { const w = wall(ms); return w.y + '-' + String(w.m + 1).padStart(2, '0') + '-' + String(w.d).padStart(2, '0'); };
+/** "15–19 Sep 2026", "28 Aug – 3 Sep 2026", "28 Dec 2025 – 3 Jan 2026" for [start, end). */
+function rangeText(start, end, withYear) {
+  if (end <= start) return 'no days';
+  const a = wall(start), b = wall(end - 1); const mn = w => MONTHS[w.m].slice(0, 3); const yr = withYear === false ? '' : ' ' + b.y;
+  if (a.y === b.y && a.m === b.m) return (a.d === b.d ? a.d : a.d + '–' + b.d) + ' ' + mn(b) + yr;
+  if (a.y === b.y) return a.d + ' ' + mn(a) + ' – ' + b.d + ' ' + mn(b) + yr;
+  return a.d + ' ' + mn(a) + ' ' + a.y + ' – ' + b.d + ' ' + mn(b) + ' ' + b.y;
+}
 
 let TOPIC_IDX = null, DETAIL_IDX = null;
+/** Known topics only; anything else counts as "Other" (this page is public). */
 function topicName(raw) {
   if (!TOPIC_IDX) { TOPIC_IDX = {}; CFG.TOPICS.forEach(t => [t.name].concat(t.also).forEach(a => { TOPIC_IDX[norm(a)] = t.name; })); }
   const n = norm(raw); if (!n) return null;
-  return TOPIC_IDX[n] || String(raw).trim().slice(0, 40);
+  return TOPIC_IDX[n] || 'Other';
 }
-/** Only known concern words are shown on this public page; anything else becomes "Other concern". */
+/** Known concern words only; anything else becomes "Other concern". */
 function concernOf(raw) {
   if (!DETAIL_IDX) { DETAIL_IDX = {}; CFG.DETAILS.forEach(d => [d.label].concat(d.also).forEach(a => { DETAIL_IDX[norm(a)] = d; })); }
   const n = norm(raw); if (!n) return null;
@@ -286,9 +313,9 @@ function outcomeOf(raw) {
 }
 const topicOrder = name => { const i = CFG.TOPICS.findIndex(t => t.name === name); return i === -1 ? 999 : i; };
 
-/** Rows (with header) → chats. Test rows, repeats and unreadable dates are counted, not used. */
+/** Rows (with header) to chats. Test rows, repeats and unreadable dates are counted, not used. */
 function readChats(values) {
-  const stats = { rows: 0, test: 0, unreadable: 0, duplicates: 0 };
+  const stats = { rows: 0, test: 0, unreadable: 0, duplicates: 0, sample: 0 };
   const chats = []; const firstSeenTopic = {}; const firstSeenConcern = {}; let logStartMs = null, newestMs = null;
   if (!values.length) return { chats, stats, firstSeenTopic, firstSeenConcern, logStartMs, newestMs };
   const cols = findColumns(values[0]);
@@ -316,6 +343,7 @@ function readChats(values) {
       channel: !ch || /^wh?at?s?app$/i.test(ch.replace(/\s/g, '')) ? 'WhatsApp' : ch,
       version: String(cell(row, 'version')).trim(),
     };
+    if (chat.version === CFG.SAMPLE_VERSION) stats.sample++;
     chats.push(chat);
     if (logStartMs === null || chat.ms < logStartMs) logStartMs = chat.ms;
     if (newestMs === null || chat.ms > newestMs) newestMs = chat.ms;
@@ -327,10 +355,11 @@ function readChats(values) {
 }
 
 function countRange(chats, r) {
-  const o = { chats: 0, BOT: 0, HUMAN: 0, QUIET: 0, UNKNOWN: 0, quietNoAnswer: 0, noTopic: 0, noTopicHuman: 0, topics: {}, topicHuman: {}, concerns: {}, concernHuman: {}, systemErrors: {}, channels: {} };
+  const o = { chats: 0, BOT: 0, HUMAN: 0, QUIET: 0, UNKNOWN: 0, quietNoAnswer: 0, noTopic: 0, noTopicHuman: 0, sample: 0, topics: {}, topicHuman: {}, concerns: {}, concernHuman: {}, systemErrors: {}, channels: {} };
   chats.forEach(c => {
     if (c.ms < r.start || c.ms >= r.end) return;
     o.chats++; o[c.outcome]++; const human = c.outcome === 'HUMAN';
+    if (c.version === CFG.SAMPLE_VERSION) o.sample++;
     if (!c.topics.length) { o.noTopic++; if (human) o.noTopicHuman++; if (c.outcome === 'QUIET') o.quietNoAnswer++; }
     c.topics.forEach(t => { o.topics[t] = (o.topics[t] || 0) + 1; });
     if (human && c.lastTopic) o.topicHuman[c.lastTopic] = (o.topicHuman[c.lastTopic] || 0) + 1;
@@ -341,48 +370,64 @@ function countRange(chats, r) {
   return o;
 }
 
-const mon3 = w => MONTHS[w.m].slice(0, 3);
-/** Period keys: this | last | d7 | d30 | m:YYYY-MM (a finished month). */
-function periodFor(key, nowMs) {
+/** Period keys: this | last | d7 | d30 | m:YYYY-MM | r:YYYY-MM-DD:YYYY-MM-DD (both days included). */
+function periodFor(key, nowMs, logStartMs) {
   const w = wall(nowMs);
   const monthStart = fromWall(w.y, w.m, 1), prevStart = fromWall(w.y, w.m - 1, 1), todayStart = fromWall(w.y, w.m, w.d);
-  const p = { key, todayStart, today: { start: todayStart, end: todayStart + DAY }, last7: { start: todayStart - 6 * DAY, end: todayStart + DAY } };
+  const p = { key, todayStart, today: { start: todayStart, end: todayStart + DAY }, last7: { start: todayStart - 6 * DAY, end: todayStart + DAY }, notes: [] };
   const monthName = ms => { const x = wall(ms); return MONTHS[x.m] + ' ' + x.y; };
+  /** Same number of days just before; if the range runs into today, stop at the same time of day. */
+  const before = (start, end) => {
+    const len = end - start; const cs = start - len;
+    const ce = end > nowMs ? Math.min(cs + (nowMs - start), start) : start;
+    return { start: cs, end: ce };
+  };
   if (key === 'last' || key.startsWith('m:')) {
     let start;
     if (key === 'last') start = prevStart;
-    else { const [y, mo] = key.slice(2).split('-').map(Number); start = fromWall(y, mo - 1, 1); }
+    else { const mm = /^m:(\d{4})-(\d{2})$/.exec(key); start = mm ? fromWall(+mm[1], +mm[2] - 1, 1) : prevStart; }
     const sw = wall(start); const cs = fromWall(sw.y, sw.m - 1, 1);
-    p.main = { start, end: fromWall(sw.y, sw.m + 1, 1), label: monthName(start), title: monthName(start) };
-    p.compare = { start: cs, end: start, label: monthName(cs), short: 'in ' + monthName(cs), than: 'than ' + monthName(cs), col: 'vs ' + monthName(cs) };
-    p.isThisMonth = false;
+    p.main = { start, end: fromWall(sw.y, sw.m + 1, 1) };
+    p.compare = { start: cs, end: start };
+    p.title = monthName(start);
+    p.compareText = monthName(cs);
   } else if (key === 'd7' || key === 'd30') {
-    const n = key === 'd7' ? 7 : 30; const start = todayStart - (n - 1) * DAY; const sw = wall(start);
-    p.main = { start, end: todayStart + DAY, label: 'Last ' + n + ' days', title: 'Last ' + n + ' days (' + sw.d + ' ' + mon3(sw) + ' – ' + w.d + ' ' + mon3(w) + ' ' + w.y + ')' };
-    p.compare = { start: start - n * DAY, end: start, label: 'Previous ' + n + ' days', short: 'in the ' + n + ' days before', than: 'than the ' + n + ' days before', col: 'vs ' + n + ' days before' };
-    p.isThisMonth = false;
+    const n = key === 'd7' ? 7 : 30; const start = todayStart - (n - 1) * DAY;
+    p.main = { start, end: todayStart + DAY };
+    p.compare = before(start, todayStart + DAY);
+    p.title = 'Last ' + n + ' days · ' + rangeText(start, todayStart + DAY);
+    p.compareText = rangeText(p.compare.start, p.compare.end, false);
+  } else if (key.startsWith('r:')) {
+    const parts = key.slice(2).split(':');
+    let a = isoDay(parts[0]), b = isoDay(parts[1]);
+    if (a === null || b === null) return periodFor('this', nowMs, logStartMs);
+    if (b < a) { const t = a; a = b; b = t; p.notes.push('The dates were the wrong way round, so they were swapped.'); }
+    if (b > todayStart) { b = todayStart; p.notes.push('The range stops at today.'); }
+    if (a > b) a = b;
+    if ((b - a) / DAY + 1 > CFG.MAX_RANGE_DAYS) { a = b - (CFG.MAX_RANGE_DAYS - 1) * DAY; p.notes.push('Ranges are limited to ' + CFG.MAX_RANGE_DAYS + ' days.'); }
+    if (logStartMs !== null && b + DAY <= dayStart(logStartMs)) p.notes.push('There are no chats before ' + rangeText(dayStart(logStartMs), dayStart(logStartMs) + DAY) + '.');
+    p.main = { start: a, end: b + DAY };
+    p.compare = before(a, b + DAY);
+    const days = Math.round((b + DAY - a) / DAY);
+    p.title = rangeText(a, b + DAY) + ' (' + days + ' day' + (days === 1 ? '' : 's') + ')';
+    p.compareText = rangeText(p.compare.start, p.compare.end, false);
   } else {
     const end = Math.min(prevStart + (nowMs - monthStart), monthStart);
-    const pw = wall(prevStart);
-    p.main = { start: monthStart, end: fromWall(w.y, w.m + 1, 1), label: 'This month (1–' + w.d + ' ' + mon3(w) + ')', title: 'This month · 1–' + w.d + ' ' + MONTHS[w.m] + ' ' + w.y };
-    p.compare = { start: prevStart, end, label: 'Same days last month (1–' + (end > prevStart ? wall(end - 1).d : 0) + ' ' + mon3(pw) + ')', short: 'the same days last month', than: 'than the same days last month', col: 'vs same days last month' };
+    p.main = { start: monthStart, end: fromWall(w.y, w.m + 1, 1) };
+    p.compare = { start: prevStart, end };
+    p.title = 'This month · ' + rangeText(monthStart, todayStart + DAY);
+    p.compareText = rangeText(prevStart, Math.max(end, prevStart + 1), false);
     p.isThisMonth = true;
   }
+  p.days = Math.max(1, Math.round((Math.min(p.main.end, todayStart + DAY) - p.main.start) / DAY));
   return p;
 }
 
 function diffText(diff) { return diff > 0 ? { t: '▲ ' + diff + ' more', c: 'up' } : diff < 0 ? { t: '▼ ' + (-diff) + ' fewer', c: 'down' } : { t: 'same', c: '' }; }
 
-function mostAsked(count) {
-  const names = Object.keys(count.topics); if (!names.length) return '—';
-  const max = Math.max(...names.map(n => count.topics[n]));
-  const top = names.filter(n => count.topics[n] === max).sort((a, b) => topicOrder(a) - topicOrder(b) || a.localeCompare(b));
-  return top.length === 1 ? top[0] : top.length === 2 ? top[0] + ' & ' + top[1] : 'Several';
-}
-
 /** Everything the page shows, for one period. */
 function summarize(read, nowMs, key) {
-  const p = periodFor(key, nowMs);
+  const p = periodFor(key, nowMs, read.logStartMs);
   const main = countRange(read.chats, p.main), compare = countRange(read.chats, p.compare), today = countRange(read.chats, p.today);
   const canCompare = read.logStartMs !== null && read.logStartMs < p.compare.start && p.compare.end > p.compare.start;
   const topicRows = Object.keys(main.topics).map(name => {
@@ -392,44 +437,60 @@ function summarize(read, nowMs, key) {
   const concernRows = Object.keys(main.concerns).map(label => ({ label, chats: main.concerns[label], human: main.concernHuman[label] || 0 }))
     .sort((a, b) => (a.label === OTHER_CONCERN) - (b.label === OTHER_CONCERN) || b.chats - a.chats || a.label.localeCompare(b.label)).slice(0, 10);
 
-  const days = []; const lastDay = Math.min(p.main.end, p.today.end);
-  for (let t = p.main.start; t < lastDay; t += DAY) {
-    const r = countRange(read.chats, { start: t, end: t + DAY }); const w = wall(t);
-    days.push({ label: w.d + ' ' + mon3(w), BOT: r.BOT, HUMAN: r.HUMAN, QUIET: r.QUIET, UNKNOWN: r.UNKNOWN, total: r.chats });
-  }
-  const heat = Array.from({ length: 7 }, () => new Array(24).fill(0));
-  const heatHuman = Array.from({ length: 7 }, () => new Array(24).fill(0)); let inHeat = 0;
+  // chats over time: by hour for one day, by day up to 62 days, by week beyond
+  const lastEnd = Math.min(p.main.end, p.today.end); const span = Math.max(0, lastEnd - p.main.start);
+  const unit = span <= DAY ? 'hour' : span <= 62 * DAY ? 'day' : 'week';
+  const buckets = [];
+  if (unit === 'hour') for (let h = 0; h < 24; h++) buckets.push({ start: p.main.start + h * 3600000, end: p.main.start + (h + 1) * 3600000, label: (h % 12 || 12) + (h < 12 ? 'am' : 'pm') });
+  else if (unit === 'day') for (let t = p.main.start; t < lastEnd; t += DAY) { const x = wall(t); buckets.push({ start: t, end: t + DAY, label: x.d + ' ' + MONTHS[x.m].slice(0, 3) }); }
+  else { for (let t = p.main.start; t < lastEnd; t += 7 * DAY) { const e = Math.min(t + 7 * DAY, lastEnd); const x = wall(t); buckets.push({ start: t, end: e, label: x.d + ' ' + MONTHS[x.m].slice(0, 3), partial: e - t < 7 * DAY }); } }
+  buckets.forEach(b => { b.total = 0; });
+  const size = { hour: 3600000, day: DAY, week: 7 * DAY }[unit];
   read.chats.forEach(c => {
-    if (c.ms < p.main.start || c.ms >= p.main.end) return;
-    const w = wall(c.ms); heat[w.dow][w.h]++; inHeat++; if (c.outcome === 'HUMAN') heatHuman[w.dow][w.h]++;
+    if (c.ms < p.main.start || c.ms >= lastEnd) return;
+    const b = buckets[Math.floor((c.ms - p.main.start) / size)]; if (b) b.total++;
   });
-  let busiest = null;
-  if (inHeat >= CFG.BUSIEST_MIN_CHATS) {
-    const byDay = heat.map(r => r.reduce((a, b) => a + b, 0)); const byHour = new Array(24).fill(0);
-    heat.forEach(r => r.forEach((n, h) => { byHour[h] += n; }));
-    const day = [1, 2, 3, 4, 5, 6, 0].reduce((b, d) => (byDay[d] > byDay[b] ? d : b), 1);
-    const hour = byHour.reduce((b, n, h) => (n > byHour[b] ? h : b), 0);
-    busiest = { day: DAYS[day], hour };
+
+  // busiest day (ranges of 7+ days, average per weekday) and busiest hour (20+ chats)
+  const inRange = read.chats.filter(c => c.ms >= p.main.start && c.ms < p.main.end);
+  let busiestDay = null, busiestHour = null;
+  if (p.days >= 7 && inRange.length) {
+    const totals = [0, 0, 0, 0, 0, 0, 0], seen = [0, 0, 0, 0, 0, 0, 0];
+    for (let t = p.main.start; t < lastEnd; t += DAY) seen[wall(t).dow]++;
+    inRange.forEach(c => { totals[wall(c.ms).dow]++; });
+    const avg = totals.map((n, d) => (seen[d] ? n / seen[d] : 0));
+    const d = [1, 2, 3, 4, 5, 6, 0].reduce((best, x) => (avg[x] > avg[best] ? x : best), 1);
+    busiestDay = { day: DAYS[d], avg: avg[d] };
   }
-  const months = [];
-  if (read.logStartMs !== null) {
-    const s = wall(read.logStartMs); let start = fromWall(s.y, s.m, 1); const nw = wall(nowMs); const current = fromWall(nw.y, nw.m, 1); const stop = fromWall(nw.y, nw.m + 1, 1);
-    while (start < stop) { const sw = wall(start); const end = fromWall(sw.y, sw.m + 1, 1); const r = countRange(read.chats, { start, end }); months.push({ label: mon3(sw) + ' ' + sw.y + (start === current ? ' (so far)' : ''), partial: start === current, BOT: r.BOT, HUMAN: r.HUMAN, QUIET: r.QUIET, UNKNOWN: r.UNKNOWN, total: r.chats }); start = end; }
+  if (inRange.length >= CFG.BUSIEST_MIN_CHATS) {
+    const byHour = new Array(24).fill(0); inRange.forEach(c => { byHour[wall(c.ms).h]++; });
+    busiestHour = byHour.reduce((best, n, h) => (n > byHour[best] ? h : best), 0);
   }
+
+  // last 6 months (whole log, ignores the chosen period)
+  const months = []; const nw = wall(nowMs);
+  for (let i = 5; i >= 0; i--) {
+    const start = fromWall(nw.y, nw.m - i, 1); const sw = wall(start); const end = fromWall(sw.y, sw.m + 1, 1);
+    if (read.logStartMs === null || end <= dayStart(read.logStartMs)) continue;
+    const r = countRange(read.chats, { start, end });
+    months.push({ label: MONTHS[sw.m] + ' ' + sw.y + (i === 0 ? ' (so far)' : ''), chats: r.chats, BOT: r.BOT, HUMAN: r.HUMAN, QUIET: r.QUIET });
+  }
+
+  // things to check
   const A = CFG.ALERT; const alerts = [];
   const sys = countRange(read.chats, p.last7).systemErrors;
-  Object.keys(sys).sort().forEach(l => alerts.push({ level: 'high', text: l + ': seen ' + sys[l] + ' time' + (sys[l] === 1 ? '' : 's') + ' in the last 7 days — tell ' + CFG.ADMIN_NAME + '.' }));
-  const dayOk = !p.isThisMonth || wall(nowMs).d >= A.MIN_DAY_OF_MONTH;
-  if (canCompare && dayOk) {
+  Object.keys(sys).sort().forEach(l => alerts.push({ level: 'high', text: l + ': seen ' + sys[l] + ' time' + (sys[l] === 1 ? '' : 's') + ' in the last 7 days. Please tell ' + CFG.ADMIN_NAME + '.' }));
+  const longEnough = p.days >= CFG.MIN_ALERT_DAYS && (!p.isThisMonth || wall(nowMs).d >= A.MIN_DAY_OF_MONTH);
+  if (canCompare && longEnough) {
     const rises = (n, b) => n >= A.MIN_CHATS && n - b >= A.MIN_RISE && n >= A.MIN_RATIO * b;
-    topicRows.forEach(r => { if (!r.isNew && rises(r.chats, r.compare)) alerts.push({ level: 'mid', text: r.name + ' is up: ' + r.chats + ' chats, compared with ' + r.compare + ' ' + p.compare.short + '.' }); });
-    Object.keys(main.concerns).forEach(l => { if (l === OTHER_CONCERN) return; const n = main.concerns[l], b = compare.concerns[l] || 0; if (read.firstSeenConcern[l] >= p.compare.start) return; if (rises(n, b)) alerts.push({ level: 'mid', text: 'More customers with "' + l + '": ' + n + ', compared with ' + b + ' ' + p.compare.short + '.' }); });
+    topicRows.forEach(r => { if (!r.isNew && rises(r.chats, r.compare)) alerts.push({ level: 'mid', text: r.name + ' is up: ' + r.chats + ' chats, compared with ' + r.compare + ' in ' + p.compareText + '.' }); });
+    Object.keys(main.concerns).forEach(l => { if (l === OTHER_CONCERN) return; const n = main.concerns[l], b = compare.concerns[l] || 0; if (read.firstSeenConcern[l] >= p.compare.start) return; if (rises(n, b)) alerts.push({ level: 'mid', text: 'More customers with "' + l + '": ' + n + ', compared with ' + b + ' in ' + p.compareText + '.' }); });
     const share = (n, t) => (t ? 100 * n / t : 0);
     const shareRise = (n, b) => compare.chats > 0 && main.chats > 0 && share(n, main.chats) - share(b, compare.chats) >= A.SHARE_POINTS && n - b >= A.MIN_RISE;
-    if (shareRise(main.topics.Other || 0, compare.topics.Other || 0)) alerts.push({ level: 'mid', text: 'More chats are "Other" than before — the menu may be missing something.' });
+    if (shareRise(main.topics.Other || 0, compare.topics.Other || 0)) alerts.push({ level: 'mid', text: 'More chats are "Other" than before. The menu may be missing something.' });
     if (shareRise(main.noTopic, compare.noTopic)) alerts.push({ level: 'mid', text: 'More customers leave before picking a topic than before.' });
   }
-  return { p, main, compare, today, canCompare, topicRows, concernRows, days, heat, heatHuman, busiest, months, alerts: alerts.slice(0, A.MAX_LINES) };
+  return { p, main, compare, today, canCompare, topicRows, concernRows, buckets, unit, busiestDay, busiestHour, months, alerts: alerts.slice(0, A.MAX_LINES) };
 }
 /* ==================================================================== LOGIC-END */
 
@@ -437,13 +498,13 @@ function summarize(read, nowMs, key) {
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const share = (n, t) => (!t ? '–' : t < CFG.SMALL_TOTAL ? n + ' of ' + t : Math.round(100 * n / t) + '%');
-const hourText = h => { const f = x => { x %= 24; return x === 0 ? '12 am' : x < 12 ? x + ' am' : x === 12 ? '12 pm' : (x - 12) + ' pm'; }; return f(h) + ' – ' + f(h + 1); };
+const share = (n, t) => (!t ? '–' : t < CFG.SMALL_TOTAL ? String(n) : Math.round(100 * n / t) + '%');
+const hourText = h => { const f = x => { x %= 24; return x === 0 ? '12 am' : x < 12 ? x + ' am' : x === 12 ? '12 pm' : (x - 12) + ' pm'; }; return f(h) + ' to ' + f(h + 1); };
 const clock = ms => { const w = wall(ms); return (w.h % 12 || 12) + ':' + String(w.mi).padStart(2, '0') + (w.h < 12 ? ' am' : ' pm'); };
-const stamp = ms => { const w = wall(ms); return w.d + ' ' + mon3(w) + ' ' + w.y + ', ' + clock(ms); };
+const stamp = ms => { const w = wall(ms); return w.d + ' ' + MONTHS[w.m].slice(0, 3) + ' ' + w.y + ', ' + clock(ms); };
 const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
 
-let READ = null, LAST_TEXT = null, FETCHED_AT = null, LOADING = false, CHARTS = [], HEAT_MODE = store('heat') || 'all';
+let READ = null, LAST_TEXT = null, FETCHED_AT = null, LOADING = false, CHART = null, RENDER_DAY = null, KEY = null;
 
 async function load(manual) {
   if (LOADING) return; LOADING = true; $('#refresh').disabled = true;
@@ -452,25 +513,21 @@ async function load(manual) {
     const res = await fetch(CFG.CSV_URL + (CFG.CSV_URL.includes('?') ? '&' : '?') + 't=' + Date.now(), { cache: 'no-store', signal: ctrl.signal });
     if (!res.ok) throw new Error('the data link answered ' + res.status + '.');
     const text = await res.text();
-    if (/^\s*</.test(text)) throw new Error('the data link returned a web page, not data — is the sheet still "Published to the web"?');
-    FETCHED_AT = Date.now();
-    if (text !== LAST_TEXT) { READ = readChats(parseCSV(text)); LAST_TEXT = text; fillPeriods(); render(!manual && CHARTS.length > 0); }
-    else updateHeader();
-    showStale();
+    if (/^\s*</.test(text)) throw new Error('the data link returned a web page, not data. Is the sheet still published to the web?');
+    FETCHED_AT = Date.now(); LOAD_ERROR = null;
+    const newDay = RENDER_DAY !== toIso(Date.now());
+    if (text !== LAST_TEXT || newDay) { READ = readChats(parseCSV(text)); LAST_TEXT = text; fillPeriods(); render(!manual && CHART !== null); }
+    else { renderMeta(); renderNotices(); }
   } catch (e) {
-    const why = e.name === 'AbortError' ? 'the data link took too long to answer.' : e.message;
-    $('#banner').innerHTML = '<div class="banner warn">Couldn\'t load the latest data: ' + esc(why) + (READ ? ' Showing the last data that loaded.' : ' Please tell ' + esc(CFG.ADMIN_NAME) + '.') + '</div>';
+    LOAD_ERROR = e.name === 'AbortError' ? 'the data link took too long to answer.' : e.message;
+    renderNotices();
     if (!READ) $('#app').innerHTML = '';
   } finally { clearTimeout(timer); LOADING = false; $('#refresh').disabled = false; }
 }
-
-function showStale() {
-  const old = READ && READ.newestMs !== null && Date.now() - READ.newestMs > CFG.STALE_HOURS * 3600000;
-  $('#banner').innerHTML = old ? '<div class="banner warn">No new chats since ' + esc(stamp(READ.newestMs)) + '. If customers have been messaging, the bot may have stopped sending data — please tell ' + esc(CFG.ADMIN_NAME) + '.</div>' : '';
-}
+let LOAD_ERROR = null;
 
 function fillPeriods() {
-  const sel = $('#period'); const keep = sel.value || store('period') || 'this';
+  const sel = $('#period');
   const nw = wall(Date.now()); const opts = [['this', 'This month'], ['last', 'Last month'], ['d7', 'Last 7 days'], ['d30', 'Last 30 days']];
   const months = [];
   if (READ.logStartMs !== null) {
@@ -478,137 +535,171 @@ function fillPeriods() {
     while (y < nw.y || (y === nw.y && m < nw.m)) { months.push(['m:' + y + '-' + String(m + 1).padStart(2, '0'), MONTHS[m] + ' ' + y]); m++; if (m > 11) { m = 0; y++; } }
   }
   months.reverse();
-  sel.innerHTML = opts.concat(months).map(([v, t], i) => (i === 4 ? '<option disabled>── past months ──</option>' : '') + '<option value="' + v + '">' + esc(t) + '</option>').join('');
-  sel.value = opts.concat(months).some(o => o[0] === keep) ? keep : 'this';
+  sel.innerHTML = opts.map(([v, t]) => '<option value="' + v + '">' + esc(t) + '</option>').join('') +
+    (months.length ? '<optgroup label="Past months">' + months.map(([v, t]) => '<option value="' + v + '">' + esc(t) + '</option>').join('') + '</optgroup>' : '') +
+    '<option value="custom">Custom dates</option>';
+  const today = toIso(Date.now());
+  $('#from').max = today; $('#to').max = today;
+  if (READ.logStartMs !== null) { $('#from').min = toIso(READ.logStartMs); $('#to').min = toIso(READ.logStartMs); }
+  if (!KEY) KEY = startKey();
+  sel.value = KEY.startsWith('r:') ? 'custom' : (opts.concat(months).some(o => o[0] === KEY) ? KEY : 'this');
+  if (sel.value === 'this' && KEY !== 'this' && !KEY.startsWith('r:')) KEY = 'this';
 }
 
-function updateHeader(S) {
-  const parts = [];
-  if (READ) {
-    const today = S ? S.today.chats : countRange(READ.chats, periodFor('this', Date.now()).today).chats;
-    parts.push('Today so far: <b>' + today + '</b> chat' + (today === 1 ? '' : 's'));
-    if (READ.newestMs !== null) parts.push('latest chat ' + esc(stamp(READ.newestMs)));
-  }
-  if (FETCHED_AT) parts.push('checked ' + esc(clock(FETCHED_AT)) + ' · updates every ' + CFG.REFRESH_MINUTES + ' min');
-  $('#updated').innerHTML = parts.join(' · ');
+/** ?from=YYYY-MM-DD&to=YYYY-MM-DD wins, then the last choice, then "This month". */
+function startKey() {
+  const q = new URLSearchParams(location.search); const f = q.get('from'), t = q.get('to');
+  if (isoDay(f) !== null && isoDay(t) !== null) return 'r:' + f + ':' + t;
+  const saved = store('period');
+  return saved && /^(this|last|d7|d30|m:\d{4}-\d{2}|r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2})$/.test(saved) ? saved : 'this';
 }
 
-function kpi(label, value, delta, cls, accent) {
-  return '<div class="card kpi" style="--accent:' + (accent || 'var(--brand)') + '"><div class="label">' + label + '</div><div class="value">' + value + '</div><div class="delta ' + (cls || '') + '">' + (delta || '&nbsp;') + '</div></div>';
+function setKey(k) {
+  KEY = k; store('period', k);
+  const url = new URL(location.href);
+  if (k.startsWith('r:')) { const [f, t] = k.slice(2).split(':'); url.searchParams.set('from', f); url.searchParams.set('to', t); }
+  else { url.searchParams.delete('from'); url.searchParams.delete('to'); }
+  try { history.replaceState(null, '', url); } catch (e) { /* file:// */ }
+  render();
 }
-const topicColor = name => { const i = topicOrder(name); return i < 8 ? 'var(--t' + (i + 1) + ')' : 'var(--faint)'; };
-const themeLabel = () => { const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); $('#theme').textContent = cur === 'dark' ? '☀️ Light' : '🌙 Dark'; };
-const todo = t => '<p class="todo"><b>What to do:</b> ' + t + '</p>';
+
+function renderMeta(S) {
+  const bits = [];
+  if (S) bits.push(S.canCompare ? 'Compared with ' + esc(S.p.compareText) : 'No earlier period to compare with');
+  bits.push('Malaysia time');
+  if (READ) { const td = countRange(READ.chats, periodFor('this', Date.now()).today).chats; bits.push('Today so far: ' + td + ' chat' + (td === 1 ? '' : 's')); }
+  if (FETCHED_AT) bits.push('Data checked ' + esc(clock(FETCHED_AT)));
+  $('#meta').innerHTML = bits.join(' · ');
+}
+
+function renderNotices(S) {
+  const n = [];
+  if (LOAD_ERROR) n.push('<div class="notice"><p><b>Couldn\'t load the latest data:</b> ' + esc(LOAD_ERROR) + (READ ? ' Showing the last data that loaded.' : ' Please tell ' + esc(CFG.ADMIN_NAME) + '.') + '</p></div>');
+  if (READ && READ.newestMs !== null && Date.now() - READ.newestMs > CFG.STALE_HOURS * 3600000) n.push('<div class="notice"><p><b>No new chats since ' + esc(stamp(READ.newestMs)) + '.</b> If customers have been messaging, the bot may have stopped sending data. Please tell ' + esc(CFG.ADMIN_NAME) + '.</p></div>');
+  if (S && S.main.sample) n.push('<div class="notice info"><p><b>Sample data:</b> ' + S.main.sample + ' of the ' + S.main.chats + ' chats in this period are made-up test rows (Flow Version ' + esc(CFG.SAMPLE_VERSION) + '). Delete them from the sheet before using these numbers.</p></div>');
+  if (S && S.p.notes.length) n.push('<div class="notice info"><p>' + S.p.notes.map(esc).join(' ') + '</p></div>');
+  $('#notices').innerHTML = n.join('');
+}
 
 function render(quiet) {
-  CHARTS.forEach(c => c.destroy()); CHARTS = [];
-  const key = $('#period').value; store('period', key);
-  const S = summarize(READ, Date.now(), key); const m = S.main, c = S.compare;
-  $('#periodTitle').textContent = S.p.main.title;
-  updateHeader(S);
-  const d = S.canCompare ? diffText(m.chats - c.chats) : null;
+  if (!READ) return;
+  const S = summarize(READ, Date.now(), KEY || 'this'); const m = S.main, c = S.compare;
+  RENDER_DAY = toIso(Date.now());
+  $('#title').textContent = 'Customer chats · ' + S.p.title;
+  $('#from').value = toIso(S.p.main.start); $('#to').value = toIso(Math.min(S.p.main.end, S.p.today.end) - 1);
+  renderMeta(S); renderNotices(S);
 
-  let h = '<div class="grid kpis">';
-  h += kpi('Customer chats', m.chats, d ? (d.t === 'same' ? 'No change ' + esc(S.p.compare.col) : esc(d.t) + ' ' + esc(S.p.compare.than)) : 'Nothing earlier to compare with yet', d ? d.c : '', 'var(--brand)');
-  h += kpi('<span class="dot" style="background:var(--ok)"></span>Finished without staff', share(m.BOT, m.chats), m.BOT + ' chats — the bot answered and the customer was done', '', 'var(--ok)');
-  h += kpi('<span class="dot" style="background:var(--person)"></span>Needed a person', share(m.HUMAN, m.chats), m.HUMAN + ' chats — often on purpose (refunds, damaged items)', '', 'var(--person)');
-  h += kpi('<span class="dot" style="background:var(--quiet)"></span>Customer stopped replying', share(m.QUIET, m.chats), m.QUIET + ' chats — the bot was waiting for them' + (m.quietNoAnswer ? ' (' + m.quietNoAnswer + ' before any answer)' : ''), '', 'var(--quiet)');
-  if (m.UNKNOWN) h += kpi('<span class="dot" style="background:var(--unknown)"></span>Ending unknown', share(m.UNKNOWN, m.chats), m.UNKNOWN + ' chats — tell ' + esc(CFG.ADMIN_NAME), '', 'var(--unknown)');
-  h += '</div>';
+  const d = S.canCompare ? m.chats - c.chats : null;
+  const of = (n, t) => (t < CFG.SMALL_TOTAL ? 'out of ' + t + ' chats' : n + ' of ' + t + ' chats');
+  const cell = (label, key, value, note) => '<div><div class="s-label">' + (key ? '<span class="key" style="background:var(--' + key + ')"></span>' : '') + label + '</div><div class="s-value">' + value + '</div><div class="s-note">' + note + '</div></div>';
+  let h = '';
 
-  h += '<div class="card"><h2><span class="icon">⚠️</span>Worth a look</h2><ul class="alerts">' +
-    (S.alerts.length ? S.alerts.map(a => '<li style="color:' + (a.level === 'high' ? 'var(--alert)' : 'inherit') + '">' + esc(a.text) + '</li>').join('') : '<li class="none">✓ Nothing unusual right now.</li>') + '</ul></div>';
+  // 1 Summary
+  h += '<section><h2><span class="n">1</span>Summary</h2>';
+  h += '<div class="summary">' +
+    cell('Total chats', '', m.chats, d === null ? 'No earlier period to compare' : d === 0 ? 'Same as ' + esc(S.p.compareText) + ' (' + c.chats + ')' : (d > 0 ? '+' : '') + d + ' vs ' + esc(S.p.compareText) + ' (' + c.chats + ')') +
+    cell('Finished without staff', 'ok', share(m.BOT, m.chats), of(m.BOT, m.chats)) +
+    cell('Needed a person', 'person', share(m.HUMAN, m.chats), of(m.HUMAN, m.chats)) +
+    cell('Customer stopped replying', 'quiet', share(m.QUIET, m.chats), of(m.QUIET, m.chats)) + '</div>';
+  if (m.chats) {
+    const parts = ['BOT', 'HUMAN', 'QUIET', 'UNKNOWN'].filter(k => m[k]);
+    h += '<div class="split" role="img" aria-label="How chats ended">' + parts.map(k => '<span title="' + OUTCOME_LABEL[k] + ': ' + m[k] + '" style="width:' + (100 * m[k] / m.chats) + '%;background:var(--' + { BOT: 'ok', HUMAN: 'person', QUIET: 'quiet', UNKNOWN: 'unknown' }[k] + ')"></span>').join('') + '</div>';
+    if (m.UNKNOWN) h += '<p class="s-note">' + m.UNKNOWN + ' chat(s) have an ending the page doesn\'t recognise. Please tell ' + esc(CFG.ADMIN_NAME) + '.</p>';
+  }
+  if (S.alerts.length) h += '<div class="notice" style="margin:12px 0 10px"><p><b>Things to check</b></p>' + S.alerts.map(a => '<p>' + esc(a.text) + '</p>').join('') + '</div>';
+  h += '</section>';
 
-  // Topics — one table with bars (answers "what do customers ask about?")
+  // 2 Topics
   const maxT = Math.max(1, ...S.topicRows.map(r => r.chats), m.noTopic);
-  h += '<div class="card section-gap"><h2><span class="icon">💬</span>What customers asked about</h2><p class="hint">Biggest first. One chat can be about more than one topic, so these add up to more than the number of chats.</p><div class="scroll"><table><thead><tr><th>Topic</th><th class="num">Chats</th><th style="width:34%"></th><th class="num" title="Chats that went to staff from this topic (counted on the last topic of the chat)">Handed to staff</th><th class="num">' + esc(S.p.compare.col) + '</th></tr></thead><tbody>';
-  S.topicRows.forEach(r => { const col = topicColor(r.name); h += '<tr><td><span class="tdot" style="background:' + col + '"></span>' + esc(r.name) + '</td><td class="num"><b>' + r.chats + '</b></td><td><div class="bar" style="background:' + col + ';width:' + (100 * r.chats / maxT) + '%"></div></td><td class="num">' + r.human + '</td><td class="num"><span class="vs ' + r.vs.c + '">' + r.vs.t + '</span></td></tr>'; });
-  if (m.noTopic) { const dv = S.canCompare ? diffText(m.noTopic - c.noTopic) : { t: '–', c: '' }; h += '<tr><td style="color:var(--muted)">Didn\'t pick a topic</td><td class="num">' + m.noTopic + '</td><td><div class="bar" style="opacity:.4;width:' + (100 * m.noTopic / maxT) + '%"></div></td><td class="num">' + m.noTopicHuman + '</td><td class="num"><span class="vs ' + dv.c + '">' + dv.t + '</span></td></tr>'; }
-  if (!S.topicRows.length && !m.noTopic) h += '<tr><td colspan="5" style="color:var(--muted)">No chats in this period yet.</td></tr>';
-  h += '</tbody></table></div>' + todo('the top topics are where the bot saves staff the most time — keep those answers correct. A topic with many "handed to staff" may need a clearer bot answer or a new FAQ.') + '</div>';
+  h += '<section><h2><span class="n">2</span>What customers asked about</h2><p class="lead">Biggest first. One chat can cover more than one topic, so the topics add up to more than the total.</p>';
+  h += '<div class="tablewrap"><table><thead><tr><th>Topic</th><th class="num">Chats</th><th></th><th class="num">Needed a person</th><th class="num">vs ' + esc(S.p.compareText) + '</th></tr></thead><tbody>';
+  S.topicRows.forEach(r => { h += '<tr><td>' + esc(r.name) + '</td><td class="num">' + r.chats + '</td><td class="barcell"><div class="bar" style="width:' + (100 * r.chats / maxT) + '%"></div></td><td class="num">' + r.human + '</td><td class="num muted">' + r.vs.t + '</td></tr>'; });
+  if (m.noTopic) { const dv = S.canCompare ? diffText(m.noTopic - c.noTopic) : { t: '–' }; h += '<tr><td class="muted">Didn\'t pick a topic</td><td class="num">' + m.noTopic + '</td><td class="barcell"><div class="bar" style="opacity:.45;width:' + (100 * m.noTopic / maxT) + '%"></div></td><td class="num">' + m.noTopicHuman + '</td><td class="num muted">' + dv.t + '</td></tr>'; }
+  if (!S.topicRows.length && !m.noTopic) h += '<tr><td colspan="5" class="muted">No chats in this period.</td></tr>';
+  h += '</tbody></table></div></section>';
 
-  // Concerns
-  h += '<div class="card section-gap"><h2><span class="icon">🔎</span>Main concerns</h2><p class="hint">The specific problem inside each topic.</p>';
+  // 3 Concerns
+  h += '<section><h2><span class="n">3</span>Specific problems</h2><p class="lead">What exactly customers needed inside each topic.</p>';
   if (S.concernRows.length) {
     const maxC = Math.max(...S.concernRows.map(r => r.chats));
-    h += '<div class="scroll"><table><thead><tr><th>Concern</th><th class="num">Chats</th><th style="width:34%"></th><th class="num">Handed to staff</th></tr></thead><tbody>' +
-      S.concernRows.map(r => '<tr><td' + (r.label === OTHER_CONCERN ? ' style="color:var(--muted)"' : '') + '>' + esc(r.label) + '</td><td class="num"><b>' + r.chats + '</b></td><td><div class="bar" style="background:var(--concern);width:' + (100 * r.chats / maxC) + '%"></div></td><td class="num">' + r.human + '</td></tr>').join('') + '</tbody></table></div>' +
-      todo('common concerns are ideas for FAQ answers or clearer bot messages. "Not working" lines are IT problems — tell ' + esc(CFG.ADMIN_NAME) + '.');
-  } else h += '<p class="note">No concerns recorded yet — the bot only sends topics for now.</p>';
-  h += '</div>';
+    h += '<div class="tablewrap"><table><thead><tr><th>Problem</th><th class="num">Chats</th><th></th><th class="num">Needed a person</th></tr></thead><tbody>' +
+      S.concernRows.map(r => '<tr><td' + (r.label === OTHER_CONCERN ? ' class="muted"' : '') + '>' + esc(r.label) + '</td><td class="num">' + r.chats + '</td><td class="barcell"><div class="bar" style="width:' + (100 * r.chats / maxC) + '%"></div></td><td class="num">' + r.human + '</td></tr>').join('') + '</tbody></table></div>';
+  } else h += '<p class="muted">None recorded in this period. The bot only sends topics for now.</p>';
+  h += '</section>';
 
-  // When
-  h += '<div class="grid half section-gap">';
-  h += '<div class="card"><h2><span class="icon">📅</span>Chats per day</h2><p class="hint">Coloured by how each chat ended.</p><div class="chart"><canvas id="cDaily" role="img" aria-label="Chats per day"></canvas></div><div id="nochart1"></div>' + todo('a sudden jump usually follows a sale, an ad or a problem — check what happened that day.') + '</div>';
-  h += '<div class="card"><h2><span class="icon">🎯</span>How chats ended</h2><p class="hint">Share of all chats in this period.</p><div class="chart"><canvas id="cOutcome" role="img" aria-label="How chats ended"></canvas></div><div id="nochart2"></div>' + todo('"Needed a person" is often on purpose — it isn\'t a failure. A big "stopped replying" share can mean a confusing bot question.') + '</div>';
-  h += '</div>';
+  // 4 When
+  const unitText = { hour: 'per hour', day: 'per day', week: 'per week' }[S.unit];
+  h += '<section><h2><span class="n">4</span>When customers message us</h2><p class="lead">Chats ' + unitText + ', Malaysia time, by the time of the customer\'s last message.</p>';
+  h += '<div class="chart"><canvas id="cTime" role="img" aria-label="Chats ' + unitText + '"></canvas></div><p id="nochart" class="muted"></p>';
+  const facts = [];
+  if (S.busiestDay) facts.push('Busiest day: <b>' + S.busiestDay.day + 's</b> (about ' + (Math.round(S.busiestDay.avg * 10) / 10) + ' chats a day)');
+  if (S.busiestHour !== null) facts.push('Busiest time: <b>' + hourText(S.busiestHour) + '</b>');
+  if (!facts.length) facts.push('<span class="muted">Busiest day and time show for periods of 7 days or more with at least ' + CFG.BUSIEST_MIN_CHATS + ' chats.</span>');
+  h += '<div class="facts">' + facts.map(x => '<span>' + x + '</span>').join('') + '</div></section>';
 
-  const hm = HEAT_MODE === 'human' ? S.heatHuman : S.heat;
-  h += '<div class="card section-gap"><h2><span class="icon">🕒</span>When customers message us</h2><p class="hint">By day and hour, Malaysia time (the time of the customer\'s last message)' + (S.busiest ? ' · <b>Busiest: ' + S.busiest.day + 's, ' + hourText(S.busiest.hour) + '</b>' : ' · the busiest time shows after ' + CFG.BUSIEST_MIN_CHATS + ' chats') + '</p>' +
-       '<div class="toggle noprint" role="group" aria-label="Which chats"><button data-heat="all" aria-pressed="' + (HEAT_MODE !== 'human') + '">All chats</button><button data-heat="human" aria-pressed="' + (HEAT_MODE === 'human') + '">Needed a person</button></div>' +
-       heatTable(hm) + todo('plan staff cover for the darkest cells — switch to "Needed a person" to see when staff are needed most.') + '</div>';
+  // 5 Months
+  if (S.months.length) {
+    h += '<section><h2><span class="n">5</span>Month by month</h2><p class="lead">All chats in the log, whatever period is picked above.</p><div class="tablewrap"><table><thead><tr><th>Month</th><th class="num">Chats</th><th class="num">Finished without staff</th><th class="num">Needed a person</th><th class="num">Stopped replying</th></tr></thead><tbody>' +
+      S.months.map(r => '<tr><td>' + esc(r.label) + '</td><td class="num">' + r.chats + '</td><td class="num">' + share(r.BOT, r.chats) + '</td><td class="num">' + share(r.HUMAN, r.chats) + '</td><td class="num">' + share(r.QUIET, r.chats) + '</td></tr>').join('') + '</tbody></table></div></section>';
+  }
 
-  if (S.months.length > 1) h += '<div class="card section-gap"><h2><span class="icon">📈</span>Month by month</h2><p class="hint">All chats in the log. The current month is still filling up.</p><div class="chart"><canvas id="cMonths" role="img" aria-label="Chats per month"></canvas></div>' + todo('use this for the monthly meeting — pick a month in "Show" to see its details.') + '</div>';
+  // Notes
+  const st = READ.stats; const notes = [
+    'Needed a person is often on purpose, for example refunds, damaged items or orders that couldn\'t be found. It is not a failure.',
+    'A chat is counted once it reaches an ending in the chat bot. This page doesn\'t measure staff and isn\'t the complaint case list.',
+    'Only topics, outcomes and times are stored. No names, phone numbers or messages.',
+  ];
+  const chans = Object.keys(m.channels); if (chans.length > 1) notes.push('By channel: ' + chans.map(k => k + ' ' + m.channels[k]).join(', ') + '.');
+  if (st.test) notes.push('Test chats not counted: ' + st.test + '.');
+  if (st.unreadable) notes.push(st.unreadable + ' chat(s) had a date that couldn\'t be read and aren\'t counted. Please tell ' + CFG.ADMIN_NAME + '.');
+  if (st.duplicates) notes.push(st.duplicates + ' repeated row(s) ignored.');
+  notes.push('Source: SleekFlow Tracker (Google Sheet), ' + READ.chats.length + ' chats in total. Updates every ' + CFG.REFRESH_MINUTES + ' minutes.');
+  h += '<section class="notes"><h2>Notes</h2><ul>' + notes.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></section>';
 
   $('#app').innerHTML = h;
-  document.querySelectorAll('[data-heat]').forEach(b => b.addEventListener('click', () => { HEAT_MODE = b.dataset.heat; store('heat', HEAT_MODE); render(true); }));
-  drawCharts(S, quiet);
-
-  const st = READ.stats; const f = [];
-  f.push('Counts customer enquiries that reached an ending in the chat bot. It doesn\'t measure staff, and it isn\'t the complaint case list.');
-  f.push('No customer names, phone numbers or messages are stored — only topics, outcomes and times.');
-  const chans = Object.keys(m.channels); if (chans.length > 1) f.push('By channel: ' + chans.map(k => k + ' ' + m.channels[k]).join(' · ') + '.');
-  if (!S.canCompare) f.push(READ.logStartMs === null ? 'No chats logged yet.' : 'No comparison for this period — the log starts on ' + stamp(READ.logStartMs).split(',')[0] + '.');
-  if (st.test) f.push('Test chats not counted: ' + st.test + '.');
-  if (st.unreadable) f.push(st.unreadable + ' chat(s) had a date that couldn\'t be read, so they aren\'t counted — tell ' + CFG.ADMIN_NAME + '.');
-  if (st.duplicates) f.push(st.duplicates + ' repeated row(s) ignored.');
-  f.push(READ.chats.length + ' chats in the log · source: SleekFlow Tracker (Google Sheet) · Malaysia time');
-  $('#footer').innerHTML = f.map(esc).join('<br>');
+  drawChart(S, quiet);
 }
 
-function heatTable(heat) {
-  const max = Math.max(1, ...heat.flat()); const order = [1, 2, 3, 4, 5, 6, 0];
-  const shade = n => (n ? 'color-mix(in oklab, var(--seq-hi) ' + Math.round(100 * Math.sqrt(n / max)) + '%, var(--seq-lo))' : 'var(--line)');
-  let t = '<div class="heat"><table><thead><tr><th></th>' + Array.from({ length: 24 }, (_, hh) => '<th>' + (hh % 3 === 0 ? (hh === 0 ? '12a' : hh < 12 ? hh + 'a' : hh === 12 ? '12p' : (hh - 12) + 'p') : '') + '</th>').join('') + '</tr></thead><tbody>';
-  order.forEach(dw => {
-    t += '<tr><th class="day">' + DAYS[dw].slice(0, 3) + '</th>' + heat[dw].map((n, hh) => '<td class="cell" title="' + DAYS[dw] + ', ' + hourText(hh) + ': ' + n + ' chat' + (n === 1 ? '' : 's') + '" style="background:' + shade(n) + ';opacity:' + (n ? 1 : .5) + '"></td>').join('') + '</tr>';
-  });
-  return t + '</tbody></table></div><div class="legend"><span>0</span><span class="swatch" style="background:' + shade(Math.max(1, Math.round(max / 4))) + '"></span><span class="swatch" style="background:' + shade(Math.round(max / 2) || 1) + '"></span><span class="swatch" style="background:' + shade(max) + '"></span><span>' + max + ' chats in one hour</span></div>';
-}
-
-function drawCharts(S, quiet) {
-  if (!window.Chart) { ['#nochart1', '#nochart2'].forEach(s => { const e = $(s); if (e) e.innerHTML = '<p class="note">Charts couldn\'t load (no internet to the chart library). The tables above are still correct.</p>'; }); document.querySelectorAll('canvas').forEach(c => { c.parentElement.style.display = 'none'; }); return; }
-  const grid = css('--line');
+function drawChart(S, quiet) {
+  if (CHART) { CHART.destroy(); CHART = null; }
+  const el = document.getElementById('cTime'); if (!el) return;
+  if (!window.Chart) { el.parentElement.style.display = 'none'; $('#nochart').textContent = 'The chart couldn\'t load. The tables are still correct.'; return; }
   Chart.defaults.font.family = getComputedStyle(document.body).fontFamily; Chart.defaults.color = css('--muted');
-  if (quiet) Chart.defaults.animation = false; else Chart.defaults.animation = { duration: 500 };
-  const colors = { BOT: css('--ok'), HUMAN: css('--person'), QUIET: css('--quiet'), UNKNOWN: css('--unknown') };
-  const keys = ['BOT', 'HUMAN', 'QUIET', 'UNKNOWN'].filter(k => k !== 'UNKNOWN' || S.main.UNKNOWN || S.months.some(mo => mo.UNKNOWN));
-  const el = id => document.getElementById(id);
-  const stacked = (id, rows, fade) => { if (el(id)) CHARTS.push(new Chart(el(id), {
+  CHART = new Chart(el, {
     type: 'bar',
-    data: { labels: rows.map(r => r.label), datasets: keys.map(k => ({ label: OUTCOME_LABEL[k], data: rows.map(r => r[k]), backgroundColor: rows.map(r => colors[k] + (fade && r.partial ? '80' : '')), borderRadius: 3, stack: 's' })) },
-    options: { maintainAspectRatio: false, scales: { x: { stacked: true, grid: { display: false } }, y: { stacked: true, beginAtZero: true, grid: { color: grid }, ticks: { precision: 0 } } }, plugins: { legend: { position: 'bottom' } } },
-  })); };
-  stacked('cDaily', S.days, false);
-  stacked('cMonths', S.months, true);
-  if (el('cOutcome')) {
-    if (!S.main.chats) { el('cOutcome').parentElement.innerHTML = '<p class="note">No chats in this period yet.</p>'; return; }
-    CHARTS.push(new Chart(el('cOutcome'), {
-      type: 'doughnut',
-      data: { labels: keys.map(k => OUTCOME_LABEL[k]), datasets: [{ data: keys.map(k => S.main[k]), backgroundColor: keys.map(k => colors[k]), borderColor: css('--card'), borderWidth: 2 }] },
-      options: { maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: x => ' ' + x.label + ': ' + x.raw + ' (' + share(x.raw, S.main.chats) + ')' } } } },
-    }));
-  }
+    data: { labels: S.buckets.map(b => b.label), datasets: [{ label: 'Chats', data: S.buckets.map(b => b.total), backgroundColor: S.buckets.map(b => css('--accent') + (b.partial ? '66' : '')), borderRadius: 2, maxBarThickness: 36 }] },
+    options: {
+      animation: quiet ? false : { duration: 300 }, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { title: it => (S.unit === 'week' ? 'Week from ' : '') + it[0].label + (S.buckets[it[0].dataIndex].partial ? ' (part week)' : ''), label: x => ' ' + x.raw + ' chat' + (x.raw === 1 ? '' : 's') } } },
+      scales: { x: { grid: { display: false }, ticks: { autoSkip: true, maxRotation: 0 } }, y: { beginAtZero: true, grid: { color: css('--line') }, ticks: { precision: 0 } } },
+    },
+  });
 }
 
-$('#period').addEventListener('change', () => READ && render());
+function applyDates(changed) {
+  let f = $('#from').value, t = $('#to').value;
+  if (!f || !t) return;
+  if (t < f) { const x = f; f = t; t = x; $('#from').value = f; $('#to').value = t; $('#live').textContent = 'The From date was after the To date, so they were swapped.'; }
+  $('#period').value = 'custom';
+  setKey('r:' + f + ':' + t);
+}
+
+const themeLabel = () => { const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); $('#theme').textContent = cur === 'dark' ? 'Light mode' : 'Dark mode'; };
+
+$('#period').addEventListener('change', () => {
+  const v = $('#period').value;
+  if (v === 'custom') { $('#from').focus(); if ($('#from').value && $('#to').value) applyDates(); return; }
+  setKey(v);
+});
+$('#from').addEventListener('change', () => applyDates('from'));
+$('#to').addEventListener('change', () => applyDates('to'));
 $('#refresh').addEventListener('click', () => load(true));
 $('#print').addEventListener('click', () => window.print());
 $('#theme').addEventListener('click', () => {
   const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  const next = cur === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', next); store('theme', next); themeLabel(); if (READ) render(true);
+  const next = cur === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', next); store('theme', next); themeLabel(); render(true);
 });
-window.addEventListener('beforeprint', () => { if (READ) { const t = document.documentElement.getAttribute('data-theme'); document.documentElement.setAttribute('data-theme', 'light'); render(true); window.addEventListener('afterprint', () => { if (t) document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); render(true); }, { once: true }); } });
+window.addEventListener('beforeprint', () => { if (CHART) { CHART.resize(); } });
 (function init() {
   const t = store('theme'); if (t) document.documentElement.setAttribute('data-theme', t); themeLabel();
   load(true);
