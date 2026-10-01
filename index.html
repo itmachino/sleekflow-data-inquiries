@@ -1,156 +1,414 @@
-<!doctype html>
-<html lang="en">
-<head>
+<!DOCTYPE html>
+<html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Customer enquiries · Machino</title>
-<meta name="description" content="Machino customer enquiries: what customers ask, their concerns, when, and which chats needed a person.">
+<title>Customer Service Report · Machino</title>
+<meta name="description" content="Machino customer service report: how many customers contacted us, what they ask about on WhatsApp, and who answered them.">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4" crossorigin="anonymous"></script>
 <style>
-/* Plain report style: one font, grey rules, one accent, outcome colours only where outcomes are shown.
-   Outcome colours validated for colour-blind separation and contrast in light and dark (28 Sep 2026). */
+/* Warm report style. One system font, one brown accent for bars.
+   Colour only means something: sage = completed by bot, terracotta = human assistance, warm grey = customer stopped replying / no reply,
+   red-brown = something to check. Channels have their own colours (WhatsApp green, Instagram red, TikTok blue) and only appear in channel charts. */
 :root {
   color-scheme: light;
-  --bg: #ffffff; --ink: #1d1d1b; --muted: #5c5b56; --faint: #7a7973; --line: #e2e1dc; --soft: #f6f6f3;
-  --accent: #2a78d6; --bar: #8a8f98;
-  --ok: #1baf7a; --person: #eb6834; --quiet: #a3a29c; --unknown: #4a3aa7; --alert: #b3261e; --alert-bg: #fbeeed;
+  --bg: #f7f1e7; --panel: #fffdf9; --soft: #f1e9dc; --hover: #faf5ec; --ink: #201e1d; --muted: #5c544a; --faint: #6c6357; --line: #e2d7c5; --line2: #cfc4b2;
+  --accent: #4b4038; --accent-soft: #a89885; --track: #efe6d8;
+  --wa: #2e9e5b; --ig: #d4473f; --tt: #2f6db5; --em: #8a8178; --moved: #e3d8c6; --event: rgba(75, 64, 56, .08);
+  --ok: #5f7448; --person: #cf7640; --quiet: #bdb5a9; --unknown: #6a5aa0; --alert: #a8431b; --alert-bg: #f9e4d4; --focus: #b8622c;
+  --shadow: 0 1px 2px rgba(60, 40, 20, .05), 0 6px 18px rgba(60, 40, 20, .04);
+  --r-lg: 16px; --r-md: 12px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: #1a1a19; --ink: #f2f2f0; --muted: #c3c2b7; --faint: #a3a29c; --line: #34342f; --soft: #222220;
-    --accent: #3987e5; --bar: #9a9fa8;
-    --ok: #199e70; --person: #d95926; --quiet: #6f6e69; --unknown: #9085e9; --alert: #f28b82; --alert-bg: #3a2322;
+    --bg: #141210; --panel: #1e1b18; --soft: #2a2622; --hover: #25211d; --ink: #f3ede4; --muted: #cbc1b3; --faint: #aca294; --line: #3a342d; --line2: #4f4840;
+    --accent: #d8cbb8; --accent-soft: #7d7063; --track: #2b2723;
+    --wa: #5cc98a; --ig: #f07a72; --tt: #74a9ea; --em: #a89f94; --moved: #45403a; --event: rgba(216, 203, 184, .09);
+    --ok: #93aa73; --person: #e3905d; --quiet: #857d73; --unknown: #a295e6; --alert: #f2a47c; --alert-bg: #3b2519; --focus: #e3905d;
+    --shadow: none;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #1a1a19; --ink: #f2f2f0; --muted: #c3c2b7; --faint: #a3a29c; --line: #34342f; --soft: #222220;
-  --accent: #3987e5; --bar: #9a9fa8;
-  --ok: #199e70; --person: #d95926; --quiet: #6f6e69; --unknown: #9085e9; --alert: #f28b82; --alert-bg: #3a2322;
+  --bg: #141210; --panel: #1e1b18; --soft: #2a2622; --hover: #25211d; --ink: #f3ede4; --muted: #cbc1b3; --faint: #aca294; --line: #3a342d; --line2: #4f4840;
+  --accent: #d8cbb8; --accent-soft: #7d7063; --track: #2b2723;
+  --wa: #5cc98a; --ig: #f07a72; --tt: #74a9ea; --em: #a89f94; --moved: #45403a; --event: rgba(216, 203, 184, .09);
+  --ok: #93aa73; --person: #e3905d; --quiet: #857d73; --unknown: #a295e6; --alert: #f2a47c; --alert-bg: #3b2519; --focus: #e3905d;
+  --shadow: none;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-.wrap { max-width: 1040px; margin: 0 auto; padding: 28px 16px 56px; }
-a { color: var(--accent); }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-variant-numeric: tabular-nums; }
+.wrap { max-width: 1440px; margin: 0 auto; padding: 28px 32px 96px; }
+a { color: var(--ink); text-decoration-color: var(--line2); text-underline-offset: 3px; }
+a:hover { text-decoration-color: currentColor; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+p { text-wrap: pretty; margin: 0; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-header { border-bottom: 2px solid var(--ink); padding-bottom: 14px; margin-bottom: 16px; }
-.org { font-size: 13px; color: var(--muted); margin: 0; }
-h1 { font-size: 24px; font-weight: 650; margin: 2px 0 4px; letter-spacing: -.01em; }
-.meta { color: var(--muted); font-size: 13px; margin: 0; }
+/* ---- Header panel (title, tabs) */
+.topbar { background: var(--panel); border: 1px solid var(--line2); border-radius: 18px; box-shadow: var(--shadow); padding: 26px 30px 0; }
+.hdr { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-start; justify-content: space-between; }
+.brand { font-size: 12.5px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+h1 { margin: 0; font-size: clamp(28px, 4vw, 40px); line-height: 1.1; font-weight: 750; letter-spacing: -.028em; text-wrap: balance; }
+.period { margin-top: 8px; font-size: clamp(17px, 2.2vw, 21px); font-weight: 600; color: var(--accent); }
+.morning { margin-top: 12px; font-size: 15px; color: var(--ink); }
+.morning:empty { display: none; }
+.meta { margin-top: 6px; font-size: 13px; color: var(--faint); }
+.tools { display: flex; gap: 8px; }
+.btn { font: inherit; font-size: 14px; font-weight: 500; color: var(--ink); background: var(--panel); border: 1px solid var(--line2); border-radius: 10px; padding: 0 14px; height: 36px; cursor: pointer; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); background: var(--hover); }
+.btn:active { background: var(--soft); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.ghost { background: none; color: var(--muted); }
+.btn.ghost:hover { color: var(--ink); background: var(--panel); }
 
-.filters { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; padding: 12px 0 16px; border-bottom: 1px solid var(--line); }
-.field { display: flex; flex-direction: column; gap: 3px; }
-.field label { font-size: 12px; color: var(--muted); }
-select, input[type="date"], button { font: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 6px 10px; height: 34px; }
-button { cursor: pointer; }
-button:hover, select:hover, input[type="date"]:hover { border-color: var(--faint); }
+/* ---- Tabs */
+.tabs { display: flex; gap: 30px; margin-top: 24px; border-top: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { font: inherit; font-size: 15.5px; font-weight: 600; color: var(--muted); background: none; border: 0; border-bottom: 3px solid transparent; padding: 14px 2px 12px; cursor: pointer; white-space: nowrap; }
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+
+/* ---- Filters (quiet) */
+.filters { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; padding: 16px 4px 0; }
+.f { display: flex; align-items: center; gap: 8px; }
+.f label { font-size: 13px; color: var(--muted); }
+select, input[type="date"] { font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--line2); border-radius: 10px; padding: 0 10px; height: 36px; }
+select:hover, input[type="date"]:hover { border-color: var(--muted); }
 .spacer { flex: 1; }
-.linkbtn { border: 0; background: none; color: var(--accent); padding: 6px 4px; }
 
-.notice { border-left: 3px solid var(--alert); background: var(--alert-bg); padding: 10px 14px; margin: 16px 0 0; }
-.notice.info { border-left-color: var(--faint); background: var(--soft); }
-.notice p { margin: 2px 0; }
+/* ---- Notices */
+#notices { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+#notices:empty { display: none; }
+.notice { background: var(--alert-bg); border-radius: var(--r-md); padding: 12px 18px; font-size: 14px; }
+.notice.info { background: var(--soft); }
+.notice p + p { margin-top: 2px; }
+.notice .tech { font-size: 12.5px; color: var(--muted); }
 
-section { padding: 22px 0 6px; border-bottom: 1px solid var(--line); }
-section:last-of-type { border-bottom: 0; }
-h2 { font-size: 16px; font-weight: 650; margin: 0 0 2px; }
-h2 .n { color: var(--faint); font-weight: 500; margin-right: 8px; }
-.lead { color: var(--muted); margin: 0 0 12px; font-size: 13px; }
+/* ---- Layout */
+.tabpanel { margin-top: 24px; display: flex; flex-direction: column; gap: 20px; }
+.tabpanel:focus { outline: none; }
+.cols { display: grid; gap: 20px; align-items: stretch; }
+.c32 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.c11 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.c21 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.pagehead { display: flex; flex-direction: column; gap: 4px; padding: 4px 2px 0; }
+.pagehead h2 { margin: 0; font-size: 26px; line-height: 1.2; font-weight: 750; letter-spacing: -.02em; }
+.pagehead p { color: var(--muted); }
+.pagehead .src { font-size: 13px; color: var(--faint); }
 
-.summary { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); margin: 12px 0 10px; }
-.summary > div { padding: 12px 14px; border-left: 1px solid var(--line); }
-.summary > div:first-child { border-left: 0; }
-@media (max-width: 720px) { .summary { grid-template-columns: 1fr 1fr; } .summary > div:nth-child(3) { border-left: 0; } .summary > div:nth-child(n+3) { border-top: 1px solid var(--line); } }
-.s-label { font-size: 12.5px; color: var(--muted); }
-.s-value { font-size: 26px; font-weight: 650; font-variant-numeric: tabular-nums; margin: 2px 0; }
-.s-note { font-size: 12.5px; color: var(--muted); }
-.key { display: inline-block; width: 9px; height: 9px; margin-right: 6px; vertical-align: 0; }
-
-.split { display: flex; height: 10px; margin: 4px 0 6px; background: var(--soft); }
-.split span { display: block; height: 100%; }
-.split span + span { border-left: 2px solid var(--bg); }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--muted); }
-
-table { width: 100%; border-collapse: collapse; }
-th { text-align: left; font-weight: 600; font-size: 12.5px; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--ink); }
-td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-td.barcell { width: 32%; }
-.bar { height: 8px; background: var(--bar); min-width: 2px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow); padding: 26px 28px 26px; display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.card-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 16px; }
+.card-h h3 { margin: 0; font-size: 20px; line-height: 1.25; font-weight: 700; letter-spacing: -.012em; }
+.src { font-size: 13px; color: var(--faint); }
+.card-h .src { margin-top: 2px; }
+.note { font-size: 13px; color: var(--muted); margin-top: 3px; max-width: 62ch; }
+.pc { color: var(--muted); font-weight: 400; }
+.chg { margin-left: 6px; font-size: 12.5px; color: var(--faint); font-weight: 400; }
+.more { font-size: 14px; font-weight: 600; white-space: nowrap; }
+.lede { font-size: 16px; }
+.def { font-size: 12.5px; color: var(--faint); }
+.foot { font-size: 13.5px; color: var(--muted); }
 .muted { color: var(--muted); }
-.up { color: var(--ink); } .down { color: var(--ink); }
-.tablewrap { overflow-x: auto; }
+h4.subh { margin: 8px 0 0; font-size: 16px; font-weight: 700; }
+.lab-c { display: inline-flex; align-items: center; gap: 8px; }
+.key { display: inline-block; width: 10px; height: 10px; border-radius: 999px; flex: none; }
 
-.chart { position: relative; height: 260px; margin-top: 4px; }
-.facts { display: flex; flex-wrap: wrap; gap: 6px 28px; margin: 12px 0 4px; }
-.facts b { font-weight: 600; }
+/* ---- Number cards */
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow); padding: 22px 24px 20px; display: flex; flex-direction: column; min-width: 0; }
+.k-label { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.k-src { margin-top: auto; padding-top: 14px; font-size: 12px; color: var(--faint); }
+.k-val { margin-top: 12px; font-size: clamp(36px, 4.4vw, 50px); font-weight: 750; letter-spacing: -.035em; line-height: 1.05; overflow-wrap: anywhere; }
+.k-val.txt { font-size: clamp(26px, 2.9vw, 34px); letter-spacing: -.025em; line-height: 1.12; padding: 4px 0 3px; overflow-wrap: normal; text-wrap: balance; }
+.k-sub { margin-top: 8px; font-size: 14px; color: var(--ink); }
+.k-cmp { margin-top: 2px; font-size: 13px; color: var(--muted); }
+.kpi .def { margin-top: 10px; }
+.card .kpi { box-shadow: none; background: var(--hover); }
+.card .k-label { min-height: 3.1em; align-items: flex-start; }
+.card .k-label .key { margin-top: .3em; }
+.kpi > :last-child { margin-bottom: 0; }
 
-.notes { color: var(--muted); font-size: 13px; }
-.notes ul { margin: 6px 0 0; padding-left: 18px; }
-.notes li { margin: 3px 0; }
-.loading { padding: 60px 0; color: var(--muted); }
-.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+/* ---- Status strip (things to check) */
+.status { display: flex; gap: 14px; align-items: flex-start; padding: 16px 22px; border-radius: var(--r-lg); background: var(--panel); border: 1px solid var(--line); }
+.status.warn { background: var(--alert-bg); border-color: transparent; }
+.status .ico { flex: none; width: 24px; height: 24px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; line-height: 1; color: var(--panel); background: var(--ok); margin-top: 1px; }
+.status.warn .ico { background: var(--alert); }
+.st-h { font-weight: 700; font-size: 15px; }
+.status.ok .st-h { font-weight: 600; color: var(--muted); }
+.status ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 14.5px; }
+.status li { padding-left: 16px; position: relative; }
+.status li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 6px; height: 6px; border-radius: 999px; background: var(--alert); }
+.status .src { margin-top: 6px; }
+
+/* ---- Ranked bars (what customers ask about, common concerns) */
+.rank { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.rk { display: grid; grid-template-columns: minmax(110px, 170px) minmax(0, 1fr) 46px 44px; grid-template-areas: "name bar n p"; align-items: center; gap: 4px 14px; }
+.rk.cmp { grid-template-columns: minmax(110px, 170px) minmax(0, 1fr) 46px 44px 88px; grid-template-areas: "name bar n p vs"; }
+.rk.narrow { grid-template-columns: minmax(0, 1fr) 46px; grid-template-areas: "name n" "bar bar"; }
+.rk-name { grid-area: name; font-size: 15px; font-weight: 600; line-height: 1.3; }
+.rk-name small { display: block; font-size: 12.5px; font-weight: 400; color: var(--faint); }
+.rk-track { grid-area: bar; height: 12px; border-radius: 999px; background: var(--track); overflow: hidden; }
+.rk-track i { display: block; height: 100%; min-width: 4px; border-radius: 999px; background: var(--accent-soft); }
+.rk.first .rk-track i { background: var(--accent); }
+.rk-n { grid-area: n; text-align: right; font-size: 17px; font-weight: 700; }
+.rk-p { grid-area: p; text-align: right; font-size: 13.5px; color: var(--muted); }
+.rk-vs { grid-area: vs; text-align: right; font-size: 12.5px; color: var(--faint); white-space: nowrap; }
+
+/* ---- Outcome rows (small, quiet) */
+.oc-bar { display: flex; gap: 3px; height: 12px; }
+.oc-bar span { display: block; border-radius: 999px; min-width: 6px; }
+.oc { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.oc li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: baseline; gap: 2px 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.oc li:last-child { border-bottom: 0; padding-bottom: 0; }
+.oc .key { align-self: center; }
+.oc-name { font-size: 15px; font-weight: 600; }
+.oc-v { font-size: 22px; font-weight: 700; letter-spacing: -.02em; text-align: right; }
+.oc-c { grid-column: 2 / 4; font-size: 13px; color: var(--muted); }
+.reply { background: var(--soft); border-radius: var(--r-md); padding: 14px 18px; display: flex; flex-direction: column; gap: 2px; }
+.reply .main { font-size: 15px; }
+
+/* ---- Two "chosen most" lists */
+
+/* ---- Tables */
+.tw { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+th { text-align: left; font-weight: 650; font-size: 12px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 0 12px 10px; border-bottom: 1px solid var(--line2); vertical-align: bottom; }
+td { padding: 13px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th:first-child, td:first-child { padding-left: 4px; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: var(--hover); }
+th.num, td.num { text-align: right; white-space: nowrap; }
+.defs td:first-child { font-weight: 650; white-space: nowrap; }
+.defs td { vertical-align: top; }
+.defs tbody tr:hover td { background: none; }
+
+.tblctl { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 14px; }
+.tblctl .lnk { white-space: nowrap; }
+.lnk { font: inherit; background: none; border: 0; padding: 4px 0; color: var(--ink); cursor: pointer; text-decoration: underline; text-decoration-color: var(--line2); text-underline-offset: 3px; }
+.lnk:hover { text-decoration-color: currentColor; }
+.topics td.barcell { width: 18%; }
+.topics th.vs, .topics td.vs { white-space: normal; min-width: 96px; max-width: 130px; }
+.bar { height: 10px; border-radius: 999px; background: var(--accent); min-width: 4px; }
+.topics tbody.grp { border-bottom: 1px solid var(--line); }
+.topics tbody.grp:last-child { border-bottom: 0; }
+.topics tbody.grp:hover td { background: var(--hover); }
+.topics tbody.grp td { border-bottom: 0; }
+.topics tr.top td { font-weight: 700; padding-top: 10px; padding-bottom: 10px; }
+.topics tr.top td.muted { font-weight: 400; }
+.tgl { font: inherit; font-weight: 700; color: var(--ink); background: none; border: 0; display: inline-flex; align-items: center; gap: 9px; cursor: pointer; min-height: 40px; border-radius: 999px; padding: 4px 14px 4px 4px; margin: -6px 0 -6px -4px; text-align: left; }
+.tgl:hover { background: var(--soft); }
+.chev { width: 28px; height: 28px; flex: none; border-radius: 999px; background: var(--soft); display: inline-flex; align-items: center; justify-content: center; transition: transform .2s ease; }
+.tgl:hover .chev { background: var(--line); }
+.grp.open .chev { transform: rotate(90deg); }
+.hint { font-size: 12.5px; font-weight: 500; color: var(--faint); white-space: nowrap; }
+.plain { display: inline-block; padding-left: 37px; }
+.topics tr.sub td { padding: 0; border: 0; color: var(--muted); font-size: 14px; }
+.cl { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .2s ease; }
+.cl > div { min-height: 0; overflow: hidden; }
+.cl .p { padding: 6px 12px; }
+.topics tr.sub td:first-child .p { padding-left: 4px; }
+.grp:not(.open) tr.sub .cl { grid-template-rows: 0fr; }
+.grp:not(.open) tr.sub .cl > div { visibility: hidden; transition: visibility 0s .2s; }
+.tree { position: relative; display: block; padding-left: 50px; }
+.tree::before { content: ""; position: absolute; left: 15px; top: -6px; bottom: -6px; border-left: 1.5px solid var(--line2); }
+.tree::after { content: ""; position: absolute; left: 15px; top: 50%; width: 22px; border-top: 1.5px solid var(--line2); }
+tr.sub.last .tree::before { bottom: 50%; }
+tr.sub.last .p { padding-bottom: 12px !important; }
+tr.sub .bar { height: 6px; background: var(--accent-soft); }
+.tag { display: block; width: max-content; margin: 3px 0 0 auto; font-size: 11.5px; font-weight: 600; color: var(--ink); background: var(--soft); border-radius: 999px; padding: 1px 9px; }
+
+/* ---- Colour key */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
+.legend i.ev { background: var(--event); border: 1px dashed var(--line2); }
+.legend b { color: var(--ink); font-weight: 650; }
+
+/* ---- Completed-by-bot and human-assistance cards (matched pair) */
+.side { border-top: 4px solid var(--line2); }
+.side-bot { border-top-color: var(--ok); }
+.side-human { border-top-color: var(--person); }
+.side .card-h h3 { display: flex; align-items: center; gap: 10px; }
+.side-total { font-size: 14px; color: var(--muted); white-space: nowrap; text-align: right; }
+.side-total b { display: block; font-size: 32px; line-height: 1.05; letter-spacing: -.03em; color: var(--ink); font-weight: 750; }
+.side-t td.barcell { width: 34%; }
+.endbar { display: flex; gap: 2px; height: 10px; min-width: 110px; }
+.endbar span { display: block; border-radius: 3px; min-width: 3px; }
+.topics.wide td.barcell { width: 16%; }
+.topics.wide th { white-space: normal; }
+.example { font-size: 14.5px; background: var(--soft); border-radius: var(--r-md); padding: 12px 16px; }
+.side-t td.num { white-space: nowrap; }
+.tblctl .src { margin-left: auto; align-self: center; }
+
+/* ---- Chart and small facts */
+.chart { position: relative; height: 300px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px; }
+.fact { background: var(--soft); border-radius: 999px; padding: 7px 16px; font-size: 14px; }
+.notes ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14px; }
+.notes li { margin: 5px 0; }
+.loading { padding: 60px 6px; color: var(--muted); }
+details.more-info { border-top: 1px solid var(--line); padding-top: 14px; }
+details.more-info summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--muted); }
+details.more-info summary:hover { color: var(--ink); }
+details.more-info .tw { margin-top: 12px; }
+
+@media (max-width: 900px) {
+  .cols { grid-template-columns: minmax(0, 1fr); }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  body { font-size: 14.5px; }
+  .wrap { padding: 16px 12px 72px; }
+  .topbar { padding: 18px 16px 0; border-radius: 14px; }
+  .tools { width: 100%; }
+  .tabs { gap: 22px; margin-top: 18px; }
+  .tab { font-size: 15px; }
+  .filters { gap: 10px 14px; }
+  .f { flex: 1 1 40%; flex-direction: column; align-items: stretch; gap: 4px; }
+  .f:first-child { flex-basis: 100%; }
+  .f select, .f input { width: 100%; }
+  .spacer { display: none; }
+  #refresh { width: 100%; }
+  .card { padding: 20px 18px; border-radius: 14px; }
+  .card-h h3 { font-size: 18px; }
+  .kpis { gap: 12px; }
+  .kpi { padding: 16px 16px 15px; border-radius: 14px; }
+  .k-val { font-size: 34px; }
+  .k-val.txt { font-size: 24px; }
+  .k-sub { font-size: 13.5px; }
+  .k-cmp { font-size: 12.5px; }
+  .status { padding: 14px 16px; }
+  .rk, .rk.cmp { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "name n p" "bar bar bar"; }
+  .rk-vs { display: none; }
+  .rk.narrow { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name n" "bar bar"; }
+  .side-total b { font-size: 26px; }
+  .side-total { text-align: left; }
+  .tblctl .src { margin-left: 0; flex-basis: 100%; }
+  .hide-sm { display: none; }
+  .hint { display: block; }
+  .tgl { align-items: flex-start; }
+  .tgl > span:nth-child(2) { display: flex; flex-direction: column; }
+  .chart { height: 230px; }
+  .pagehead h2 { font-size: 23px; }
+  th, td { padding-left: 8px; padding-right: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .cl, .chev, .grp:not(.open) tr.sub .cl > div { transition: none; } }
 
 @media print {
   :root, :root[data-theme="dark"], :root:not([data-theme="light"]) {
-    color-scheme: light; --bg: #fff; --ink: #1d1d1b; --muted: #4a4945; --faint: #6b6a65; --line: #d6d5cf; --soft: #f4f4f1;
-    --accent: #2a78d6; --bar: #7a7f88; --ok: #1baf7a; --person: #eb6834; --quiet: #a3a29c; --unknown: #4a3aa7; --alert: #b3261e; --alert-bg: #fbeeed;
+    color-scheme: light; --bg: #fff; --panel: #fff; --soft: #f3eee6; --hover: #fff; --ink: #1d1b1a; --muted: #4d463e; --faint: #5f574d; --line: #d9d1c3; --line2: #b9ae9c;
+    --accent: #4b4038; --accent-soft: #a89885; --track: #eee7db; --wa: #2e9e5b; --ig: #d4473f; --tt: #2f6db5; --em: #8a8178; --moved: #e3d8c6; --event: rgba(75, 64, 56, .08); --ok: #5f7448; --person: #cf7640; --quiet: #bdb5a9; --unknown: #6a5aa0; --alert: #a8431b; --alert-bg: #f9e4d4; --shadow: none;
   }
-  .filters, .noprint { display: none !important; }
-  section { break-inside: avoid; }
+  @page { margin: 14mm 12mm; }
+  body { font-size: 10.5pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .wrap { max-width: none; padding: 0; }
+  .topbar { border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+  .hdr { padding-bottom: 8px; border-bottom: 2px solid var(--ink); }
+  .tools, .filters, .tabs, .noprint, .tblctl, .more { display: none !important; }
+  .tabpanel[hidden] { display: flex !important; }
+  .tabpanel { gap: 12px; margin-top: 12px; break-before: page; }
+  #p-overview { break-before: auto; }
+  .card, .kpi { box-shadow: none; padding: 14px 16px; break-inside: avoid; }
+  .card { gap: 12px; }
+  .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .kpi { padding: 10px 12px; }
+  .k-val { font-size: 26px; }
+  .k-val.txt { font-size: 18px; }
+  .cols { gap: 12px; }
+  .c32 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+  .c11 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .c21 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+  .rk { grid-template-columns: minmax(90px, 130px) minmax(0, 1fr) 40px 40px; grid-template-areas: "name bar n p"; }
+  .rk.cmp { grid-template-columns: minmax(90px, 130px) minmax(0, 1fr) 40px 40px 70px; grid-template-areas: "name bar n p vs"; }
+  .rk.narrow { grid-template-columns: minmax(0, 1fr) 40px; grid-template-areas: "name n" "bar bar"; }
+  .rk-vs { display: block; }
+  .card-h, h4.subh { break-after: avoid; }
+  tbody.grp, .reply, .chart, .notice, .status { break-inside: avoid; }
+  .side-t td.barcell, .side-t th.hide-sm { display: none; }
+  .cl { grid-template-rows: 1fr !important; }
+  .cl > div { visibility: visible !important; }
+  .chev { display: none; }
+  .tgl { padding-left: 0; margin-left: 0; }
+  .plain { padding-left: 0; }
+  .tree { padding-left: 34px; }
+  .tree::before, .tree::after { left: 8px; }
+  .chart { height: 220px; }
+  .chart canvas { max-width: 100% !important; }
+  .tw { overflow: visible; }
+  tbody tr:hover td { background: none; }
+  details.more-info > * { display: block; }
 }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <p class="org">Machino · Customer enquiries on WhatsApp</p>
-    <h1 id="title">Customer chats</h1>
-    <p class="meta" id="meta">Loading…</p>
+ <div class="topbar">
+  <header class="hdr">
+    <div>
+      <p class="brand">Machino</p>
+      <h1 id="title">Customer Service Report</h1>
+      <p class="period" id="period-title"></p>
+      <p class="morning" id="morning"></p>
+      <p class="meta" id="meta">Loading…</p>
+    </div>
+    <div class="tools noprint">
+      <button type="button" id="print" class="btn ghost">Print</button>
+      <button type="button" id="theme" class="btn ghost">Dark mode</button>
+    </div>
   </header>
 
+  <div class="tabs noprint" id="tabs" role="tablist" aria-label="Report sections">
+    <button type="button" class="tab" role="tab" id="tab-overview" data-tab="overview" aria-controls="p-overview">Overview</button>
+    <button type="button" class="tab" role="tab" id="tab-all-channels" data-tab="all-channels" aria-controls="p-all-channels">Daily Log (SleekFlow data)</button>
+    <button type="button" class="tab" role="tab" id="tab-bot" data-tab="bot" aria-controls="p-bot">WhatsApp FAQ customer data</button>
+    <button type="button" class="tab" role="tab" id="tab-definitions" data-tab="definitions" aria-controls="p-definitions">How to read this</button>
+  </div>
+ </div>
+
   <form class="filters" id="filters" onsubmit="return false">
-    <div class="field">
+    <div class="f">
       <label for="period">Period</label>
       <select id="period"></select>
     </div>
-    <div class="field">
+    <div class="f">
       <label for="from">From</label>
       <input type="date" id="from">
     </div>
-    <div class="field">
+    <div class="f">
       <label for="to">To</label>
       <input type="date" id="to">
     </div>
     <div class="spacer"></div>
-    <button type="button" id="refresh" class="noprint">Refresh</button>
-    <button type="button" id="print" class="noprint">Print</button>
-    <button type="button" id="theme" class="noprint">Dark mode</button>
+    <button type="button" id="refresh" class="btn noprint">Refresh data</button>
     <p class="sr" aria-live="polite" id="live"></p>
   </form>
 
   <div id="notices"></div>
-  <main id="app"><p class="loading">Loading the latest enquiries…</p></main>
+  <main id="app"><p class="loading">Loading the latest numbers…</p></main>
 </div>
 
 <script>
 /* ==================================================================== LOGIC-START
-   Same counting rules as docs/bot-issue-log/bot-issue-report.gs (the Sheet REPORT).
-   The settings below must match BIL_CONFIG there; docs/bot-issue-log/test-dashboard.js checks it.
+   Bot part: same counting rules as docs/bot-issue-log/bot-issue-report.gs (the Sheet REPORT).
+   The settings TOPICS, DETAILS, COLUMNS, OUTCOME_WORDS, ALERT, REQUIRED, DATE_FORMAT, BUSIEST_MIN_CHATS and
+   ADMIN_NAME must match BIL_CONFIG there; docs/bot-issue-log/test-dashboard.js checks it.
    To change: edit BOTH files, then run: node docs/bot-issue-log/test-dashboard.js */
 const CFG = {
   CSV_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSDB8b_yapTLgeVDqHt77yBvh3SpkYObGBpYUH-9rCluDZnnYFzKPgTVXNHqRxac2ze5D_um6Mn4f6W/pub?gid=1264505486&single=true&output=csv',
+  DAILY_CSV_URL: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSfx_5QyMtz4tGfldtxoP-XKeHEAfGPpLwwzv4LwqvVCFLOmcyPAQP3BvfgpUoxR8zx0wtljwoK4YfN/pub?gid=929769596&single=true&output=csv',
   REFRESH_MINUTES: 5,          // Google refreshes a published CSV about every 5 minutes
-  STALE_HOURS: 24,             // newest chat older than this: warning
+  STALE_HOURS: 24,             // newest bot chat older than this: warning
   FETCH_TIMEOUT_S: 20,
   OFFSET_H: 8,                 // Malaysia time
   DATE_FORMAT: 'MDY',          // SleekFlow sends 09/28/2026 07:28:03 +00:00
   ADMIN_NAME: 'IT',
   BUSIEST_MIN_CHATS: 20,
-  SMALL_TOTAL: 20,             // below this, show "3 of 12" instead of a percentage
+  BUSIEST_HANDED_MIN: 10,      // busiest time for chats handed to staff needs this many
+  SMALL_TOTAL: 20,             // below this, show counts instead of a percentage
   MAX_RANGE_DAYS: 366,
   SAMPLE_VERSION: 'FAKE-DATA', // rows with this Flow Version are made-up test data
   COLUMNS: {
@@ -174,23 +432,23 @@ const CFG = {
     { name: 'Other', also: ['other (not selected)', 'asked for a person', 'talk to a human'] },
   ],
   DETAILS: [
-    { label: 'Wide feet', also: ['wide'] },
-    { label: 'Flat feet', also: ['flat'] },
-    { label: 'Slim / narrow feet', also: ['slim feet', 'slim', 'narrow feet'] },
-    { label: 'Bunions', also: ['bunion'] },
-    { label: 'General size guide', also: ['general guide', 'size guide'] },
-    { label: 'Sent online return link', also: ['online self-service', 'online self service', 'online return'] },
-    { label: 'Return shipping cost', also: ['shipping cost'] },
-    { label: 'Refund question', also: ['refund type', 'refund'] },
-    { label: 'Bought in store', also: ['in-store purchase', 'in store purchase', 'in-store'] },
-    { label: 'Damaged / wrong item', also: ['defect', 'defect / issue', 'defect or issue', 'damaged'] },
-    { label: 'Order found', also: ['found'] },
-    { label: "Couldn't find their order", also: ['order not found', 'not found'] },
-    { label: 'Order needs staff', also: ['needs staff'] },
-    { label: 'Order check not working', also: ['order check error', 'lookup error', 'order lookup error'], systemError: true },
-    { label: 'Pick-up open', also: ['open', 'pickup open'] },
-    { label: 'Pick-up closed right now', also: ['pick-up closed', 'pickup closed', 'closed'] },
-    { label: 'Pick-up check not working', also: ['pick-up error', 'pickup error', 'pick-up check error'], systemError: true },
+    { label: 'Wide feet', topic: 'Sizing', also: ['wide'] },
+    { label: 'Flat feet', topic: 'Sizing', also: ['flat'] },
+    { label: 'Slim / narrow feet', topic: 'Sizing', also: ['slim feet', 'slim', 'narrow feet'] },
+    { label: 'Bunions', topic: 'Sizing', also: ['bunion'] },
+    { label: 'General size guide', topic: 'Sizing', also: ['general guide', 'size guide'] },
+    { label: 'Sent online return link', topic: 'Return / Exchange', also: ['online self-service', 'online self service', 'online return'] },
+    { label: 'Return shipping cost', topic: 'Return / Exchange', also: ['shipping cost'] },
+    { label: 'Refund question', topic: 'Return / Exchange', also: ['refund type', 'refund'] },
+    { label: 'Bought in store', topic: 'Return / Exchange', also: ['in-store purchase', 'in store purchase', 'in-store'] },
+    { label: 'Damaged / wrong item', topic: 'Complaint / Feedback', also: ['defect', 'defect / issue', 'defect or issue', 'damaged'] },
+    { label: 'Order found', topic: 'Order Status', also: ['found'] },
+    { label: "Couldn't find their order", topic: 'Order Status', also: ['order not found', 'not found'] },
+    { label: 'Order needs staff', topic: 'Order Status', also: ['needs staff'] },
+    { label: 'Order check not working', topic: 'Order Status', also: ['order check error', 'lookup error', 'order lookup error'], systemError: true },
+    { label: 'Pick-up open', topic: 'Pick-up Order', also: ['open', 'pickup open'] },
+    { label: 'Pick-up closed right now', topic: 'Pick-up Order', also: ['pick-up closed', 'pickup closed', 'closed'] },
+    { label: 'Pick-up check not working', topic: 'Pick-up Order', also: ['pick-up error', 'pickup error', 'pick-up check error'], systemError: true },
   ],
   OUTCOME_WORDS: {
     HUMAN: ['human', 'handed', 'handover', 'person', 'staff'],
@@ -199,15 +457,33 @@ const CFG = {
   },
   ALERT: { MIN_CHATS: 10, MIN_RISE: 5, MIN_RATIO: 1.5, MIN_DAY_OF_MONTH: 7, SHARE_POINTS: 5, MAX_LINES: 3 },
   MIN_ALERT_DAYS: 7,           // no "is up" alerts for ranges shorter than this
+  // Daily Log part (all channels)
+  DAILY_COLUMNS: {
+    date: ['Date'], whatsapp: ['WhatsApp'], instagram: ['Instagram'], tiktok: ['TikTok'], email: ['Email'],
+    total: ['Total Enquiries', 'Total'],
+    bot: ['AI / FAQ Resolved', 'Bot or auto-reply only'],
+    staff: ['Human / Actionable Cases', 'Answered by staff'],
+    noreply: ['No Reply (Same Day)', 'No reply from us'],
+    replytime: ['Staff Reply Time (Median Mins)', 'Staff Reply Time'],
+  },
+  MIN_STAFF_FOR_TIME: 5,       // a day needs this many staff-answered chats to count in the reply time
+  MIN_COMPLETE_SHARE: 0.8,     // comparisons need at least this share of complete days in both periods
+  NOREPLY_ALERT_POINTS: 3, NOREPLY_ALERT_DAYS: 14, DAILY_STALE_HOURS: 36, MISSING_LOG_MIN_WA: 10, WEEKDAY_MIN_EACH: 4, WEEKDAY_LEAD: 1.10,
+  // Special days. A comparison that touches one names it and never raises an alert.
+  EVENTS: [
+    { name: 'the new WhatsApp bot going live', from: '2026-09-22', to: '2026-09-22' },
+    { name: 'the Warehouse Sale', from: '2026-09-24', to: '2026-09-30' },
+  ],
 };
 const DAY = 86400000;
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const OUTCOME_LABEL = { BOT: 'Finished without staff', HUMAN: 'Needed a person', QUIET: 'Customer stopped replying', UNKNOWN: 'Ending unknown' };
+const OUTCOME_LABEL = { BOT: 'Resolved by bot', HUMAN: 'Handed to staff', QUIET: 'Customer stopped replying', UNKNOWN: 'Ending unknown' };
 const OTHER_CONCERN = 'Other concern';
 
 const norm = s => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, '');
 const splitItems = s => String(s == null ? '' : s).split(/→|->|=>|>|\||;|,|\n/).map(x => x.trim()).filter(Boolean);
+const uniq = a => a.filter((x, i) => a.indexOf(x) === i);
 
 /** RFC-4180-style CSV to rows (quoted commas, "" escapes, CRLF). */
 function parseCSV(text) {
@@ -276,7 +552,7 @@ const fromWall = (y, m, d, h, mi) => Date.UTC(y, m, d, h || 0, mi || 0) - CFG.OF
 const dayStart = ms => { const w = wall(ms); return fromWall(w.y, w.m, w.d); };
 /** "2026-09-15" (Malaysia day) to its start instant; strict, never new Date(string). */
 function isoDay(s) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '').trim());
   if (!m) return null;
   const y = +m[1], mo = +m[2], d = +m[3]; const t = new Date(Date.UTC(y, mo - 1, d));
   if (t.getUTCMonth() !== mo - 1 || t.getUTCDate() !== d) return null;
@@ -291,6 +567,7 @@ function rangeText(start, end, withYear) {
   if (a.y === b.y) return a.d + ' ' + mn(a) + ' – ' + b.d + ' ' + mn(b) + yr;
   return a.d + ' ' + mn(a) + ' ' + a.y + ' – ' + b.d + ' ' + mn(b) + ' ' + b.y;
 }
+const dayText = ms => { const w = wall(ms); return w.d + ' ' + MONTHS[w.m].slice(0, 3); };
 
 let TOPIC_IDX = null, DETAIL_IDX = null;
 /** Known topics only; anything else counts as "Other" (this page is public). */
@@ -299,12 +576,12 @@ function topicName(raw) {
   const n = norm(raw); if (!n) return null;
   return TOPIC_IDX[n] || 'Other';
 }
-/** Known concern words only; anything else becomes "Other concern". */
+/** Known detail words only; anything else becomes "Other concern". Known words carry the topic they belong to. */
 function concernOf(raw) {
   if (!DETAIL_IDX) { DETAIL_IDX = {}; CFG.DETAILS.forEach(d => [d.label].concat(d.also).forEach(a => { DETAIL_IDX[norm(a)] = d; })); }
   const n = norm(raw); if (!n) return null;
   const d = DETAIL_IDX[n];
-  return d ? { label: d.label, systemError: !!d.systemError } : { label: OTHER_CONCERN, systemError: false };
+  return d ? { label: d.label, topic: d.topic || null, systemError: !!d.systemError } : { label: OTHER_CONCERN, topic: null, systemError: false };
 }
 function outcomeOf(raw) {
   const n = norm(raw); if (!n) return 'UNKNOWN';
@@ -313,11 +590,11 @@ function outcomeOf(raw) {
 }
 const topicOrder = name => { const i = CFG.TOPICS.findIndex(t => t.name === name); return i === -1 ? 999 : i; };
 
-/** Rows (with header) to chats. Test rows, repeats and unreadable dates are counted, not used. */
+/** Rows (with header) to bot chats. Test rows, repeats and unreadable dates are counted, not used. */
 function readChats(values) {
   const stats = { rows: 0, test: 0, unreadable: 0, duplicates: 0, sample: 0 };
-  const chats = []; const firstSeenTopic = {}; const firstSeenConcern = {}; let logStartMs = null, newestMs = null;
-  if (!values.length) return { chats, stats, firstSeenTopic, firstSeenConcern, logStartMs, newestMs };
+  const chats = []; const firstSeenTopic = {}; const firstSeenConcern = {}; const firstSubMs = {}; let logStartMs = null, newestMs = null;
+  if (!values.length) return { chats, stats, firstSeenTopic, firstSeenConcern, firstSubMs, logStartMs, newestMs };
   const cols = findColumns(values[0]);
   const cell = (row, f) => (cols[f] === undefined ? '' : (row[cols[f]] == null ? '' : row[cols[f]]));
   let prevKey = null;
@@ -332,26 +609,30 @@ function readChats(values) {
     prevKey = key;
     if (!when) { stats.unreadable++; continue; }
     const ordered = splitItems(cell(row, 'topics')).map(topicName).filter(Boolean);
-    const topics = ordered.filter((t, j) => ordered.indexOf(t) === j);
+    const topics = uniq(ordered);
     const cOrdered = splitItems(cell(row, 'details')).map(concernOf).filter(Boolean);
     const concerns = cOrdered.filter((c, j) => cOrdered.findIndex(x => x.label === c.label) === j);
+    const subs = concerns.filter(c => c.topic);          // details that belong to a topic = sub-topics
     const ch = String(cell(row, 'channel')).trim();
     const chat = {
       ms: when.ms, topics, lastTopic: ordered.length ? ordered[ordered.length - 1] : null,
-      concerns, lastConcern: cOrdered.length ? cOrdered[cOrdered.length - 1].label : null,
+      concerns, subs, lastConcern: cOrdered.length ? cOrdered[cOrdered.length - 1].label : null,
       outcome: outcomeOf(cell(row, 'outcome')),
       channel: !ch || /^wh?at?s?app$/i.test(ch.replace(/\s/g, '')) ? 'WhatsApp' : ch,
       version: String(cell(row, 'version')).trim(),
     };
+    // a sub-topic list in visit order, so the last one can be found (cOrdered keeps repeats out already via concerns)
+    chat.subOrder = cOrdered.filter(c => c.topic);
     if (chat.version === CFG.SAMPLE_VERSION) stats.sample++;
     chats.push(chat);
     if (logStartMs === null || chat.ms < logStartMs) logStartMs = chat.ms;
     if (newestMs === null || chat.ms > newestMs) newestMs = chat.ms;
     topics.forEach(t => { if (!(t in firstSeenTopic) || chat.ms < firstSeenTopic[t]) firstSeenTopic[t] = chat.ms; });
     concerns.forEach(c => { if (!(c.label in firstSeenConcern) || chat.ms < firstSeenConcern[c.label]) firstSeenConcern[c.label] = chat.ms; });
+    subs.forEach(c => { if (!(c.topic in firstSubMs) || chat.ms < firstSubMs[c.topic]) firstSubMs[c.topic] = chat.ms; });
   }
   chats.sort((a, b) => a.ms - b.ms);
-  return { chats, stats, firstSeenTopic, firstSeenConcern, logStartMs, newestMs };
+  return { chats, stats, firstSeenTopic, firstSeenConcern, firstSubMs, logStartMs, newestMs };
 }
 
 function countRange(chats, r) {
@@ -368,6 +649,48 @@ function countRange(chats, r) {
     o.channels[c.channel] = (o.channels[c.channel] || 0) + 1;
   });
   return o;
+}
+
+/** Outcome per topic (rule B2): "resolved by bot" = the chat ended resolved by bot and included the topic;
+    "handed" and "stopped" = only the chat's LAST topic; every other topic in those chats "moved on". */
+function topicOutcomes(chats, r) {
+  const res = {};
+  chats.forEach(c => {
+    if (c.ms < r.start || c.ms >= r.end) return;
+    c.topics.forEach(t => {
+      const o = res[t] || (res[t] = { chats: 0, resolved: 0, handed: 0, stopped: 0, moved: 0, other: 0 });
+      o.chats++;
+      if (c.outcome === 'BOT') o.resolved++;
+      else if (t !== c.lastTopic) o.moved++;
+      else if (c.outcome === 'HUMAN') o.handed++;
+      else if (c.outcome === 'QUIET') o.stopped++;
+      else o.other++;
+    });
+  });
+  return res;
+}
+
+/** Sub-topics per topic (rules B3, B4). A topic's sub-topic base only counts chats from the day its sub-topics were first recorded. */
+function subTable(read, r) {
+  const out = {}; let unrec = 0;
+  read.chats.forEach(c => {
+    if (c.ms < r.start || c.ms >= r.end) return;
+    c.subs.forEach(s => { if (c.topics.indexOf(s.topic) === -1) unrec++; });
+    c.topics.forEach(t => {
+      if (!(t in read.firstSubMs) || c.ms < dayStart(read.firstSubMs[t])) return;
+      const o = out[t] || (out[t] = { base: 0, since: dayStart(read.firstSubMs[t]), subs: {}, handed: {}, noSub: 0, noSubHanded: 0 });
+      o.base++;
+      const mine = uniq(c.subs.filter(s => s.topic === t).map(s => s.label));
+      if (!mine.length) o.noSub++; else mine.forEach(l => { o.subs[l] = (o.subs[l] || 0) + 1; });
+    });
+    if (c.outcome === 'HUMAN' && c.lastTopic && c.lastTopic in read.firstSubMs && c.ms >= dayStart(read.firstSubMs[c.lastTopic])) {
+      const o = out[c.lastTopic]; if (o) {
+        const mine = c.subOrder.filter(s => s.topic === c.lastTopic);
+        if (mine.length) { const l = mine[mine.length - 1].label; o.handed[l] = (o.handed[l] || 0) + 1; } else o.noSubHanded++;
+      }
+    }
+  });
+  return { tables: out, unrecognised: unrec };
 }
 
 /** Period keys: this | last | d7 | d30 | m:YYYY-MM | r:YYYY-MM-DD:YYYY-MM-DD (both days included). */
@@ -405,7 +728,7 @@ function periodFor(key, nowMs, logStartMs) {
     if (b > todayStart) { b = todayStart; p.notes.push('The range stops at today.'); }
     if (a > b) a = b;
     if ((b - a) / DAY + 1 > CFG.MAX_RANGE_DAYS) { a = b - (CFG.MAX_RANGE_DAYS - 1) * DAY; p.notes.push('Ranges are limited to ' + CFG.MAX_RANGE_DAYS + ' days.'); }
-    if (logStartMs !== null && b + DAY <= dayStart(logStartMs)) p.notes.push('There are no chats before ' + rangeText(dayStart(logStartMs), dayStart(logStartMs) + DAY) + '.');
+    if (logStartMs !== null && b + DAY <= dayStart(logStartMs)) p.notes.push('There are no numbers before ' + rangeText(dayStart(logStartMs), dayStart(logStartMs) + DAY) + '.');
     p.main = { start: a, end: b + DAY };
     p.compare = before(a, b + DAY);
     const days = Math.round((b + DAY - a) / DAY);
@@ -425,11 +748,17 @@ function periodFor(key, nowMs, logStartMs) {
 
 function diffText(diff) { return diff > 0 ? { t: '▲ ' + diff + ' more', c: 'up' } : diff < 0 ? { t: '▼ ' + (-diff) + ' fewer', c: 'down' } : { t: 'same', c: '' }; }
 
-/** Everything the page shows, for one period. */
+/** Names of the special days (CFG.EVENTS) that overlap [start, end). */
+function eventsTouching(start, end) {
+  return CFG.EVENTS.filter(e => { const a = isoDay(e.from), b = isoDay(e.to); return a !== null && b !== null && a < end && b + DAY > start; }).map(e => e.name);
+}
+
+/** Everything the bot part shows, for one period. */
 function summarize(read, nowMs, key) {
   const p = periodFor(key, nowMs, read.logStartMs);
   const main = countRange(read.chats, p.main), compare = countRange(read.chats, p.compare), today = countRange(read.chats, p.today);
   const canCompare = read.logStartMs !== null && read.logStartMs < p.compare.start && p.compare.end > p.compare.start;
+  const events = uniq(eventsTouching(p.main.start, Math.min(p.main.end, p.today.end)).concat(canCompare ? eventsTouching(p.compare.start, p.compare.end) : []));
   const topicRows = Object.keys(main.topics).map(name => {
     const c = compare.topics[name] || 0; const isNew = canCompare && read.firstSeenTopic[name] >= p.compare.start;
     return { name, chats: main.topics[name], human: main.topicHuman[name] || 0, compare: c, isNew, vs: !canCompare ? { t: '–', c: '' } : isNew ? { t: 'new', c: 'new' } : diffText(main.topics[name] - c) };
@@ -437,37 +766,13 @@ function summarize(read, nowMs, key) {
   const concernRows = Object.keys(main.concerns).map(label => ({ label, chats: main.concerns[label], human: main.concernHuman[label] || 0 }))
     .sort((a, b) => (a.label === OTHER_CONCERN) - (b.label === OTHER_CONCERN) || b.chats - a.chats || a.label.localeCompare(b.label)).slice(0, 10);
 
-  // chats over time: by hour for one day, by day up to 62 days, by week beyond
-  const lastEnd = Math.min(p.main.end, p.today.end); const span = Math.max(0, lastEnd - p.main.start);
-  const unit = span <= DAY ? 'hour' : span <= 62 * DAY ? 'day' : 'week';
-  const buckets = [];
-  if (unit === 'hour') for (let h = 0; h < 24; h++) buckets.push({ start: p.main.start + h * 3600000, end: p.main.start + (h + 1) * 3600000, label: (h % 12 || 12) + (h < 12 ? 'am' : 'pm') });
-  else if (unit === 'day') for (let t = p.main.start; t < lastEnd; t += DAY) { const x = wall(t); buckets.push({ start: t, end: t + DAY, label: x.d + ' ' + MONTHS[x.m].slice(0, 3) }); }
-  else { for (let t = p.main.start; t < lastEnd; t += 7 * DAY) { const e = Math.min(t + 7 * DAY, lastEnd); const x = wall(t); buckets.push({ start: t, end: e, label: x.d + ' ' + MONTHS[x.m].slice(0, 3), partial: e - t < 7 * DAY }); } }
-  buckets.forEach(b => { b.total = 0; });
-  const size = { hour: 3600000, day: DAY, week: 7 * DAY }[unit];
-  read.chats.forEach(c => {
-    if (c.ms < p.main.start || c.ms >= lastEnd) return;
-    const b = buckets[Math.floor((c.ms - p.main.start) / size)]; if (b) b.total++;
-  });
+  // outcome per topic, sub-topics, and the two "most chosen" lists
+  const res = topicOutcomes(read.chats, p.main);
+  const sub = subTable(read, p.main);
+  const byCount = k => Object.keys(res).filter(t => res[t][k] > 0).sort((a, b) => res[b][k] - res[a][k] || topicOrder(a) - topicOrder(b)).slice(0, 5).map(t => ({ name: t, n: res[t][k], of: res[t].chats }));
+  const lists = { resolved: byCount('resolved'), handed: byCount('handed') };
 
-  // busiest day (ranges of 7+ days, average per weekday) and busiest hour (20+ chats)
-  const inRange = read.chats.filter(c => c.ms >= p.main.start && c.ms < p.main.end);
-  let busiestDay = null, busiestHour = null;
-  if (p.days >= 7 && inRange.length) {
-    const totals = [0, 0, 0, 0, 0, 0, 0], seen = [0, 0, 0, 0, 0, 0, 0];
-    for (let t = p.main.start; t < lastEnd; t += DAY) seen[wall(t).dow]++;
-    inRange.forEach(c => { totals[wall(c.ms).dow]++; });
-    const avg = totals.map((n, d) => (seen[d] ? n / seen[d] : 0));
-    const d = [1, 2, 3, 4, 5, 6, 0].reduce((best, x) => (avg[x] > avg[best] ? x : best), 1);
-    busiestDay = { day: DAYS[d], avg: avg[d] };
-  }
-  if (inRange.length >= CFG.BUSIEST_MIN_CHATS) {
-    const byHour = new Array(24).fill(0); inRange.forEach(c => { byHour[wall(c.ms).h]++; });
-    busiestHour = byHour.reduce((best, n, h) => (n > byHour[best] ? h : best), 0);
-  }
-
-  // last 6 months (whole log, ignores the chosen period)
+  // chats per month for the bot part (whole log)
   const months = []; const nw = wall(nowMs);
   for (let i = 5; i >= 0; i--) {
     const start = fromWall(nw.y, nw.m - i, 1); const sw = wall(start); const end = fromWall(sw.y, sw.m + 1, 1);
@@ -476,62 +781,215 @@ function summarize(read, nowMs, key) {
     months.push({ label: MONTHS[sw.m] + ' ' + sw.y + (i === 0 ? ' (so far)' : ''), chats: r.chats, BOT: r.BOT, HUMAN: r.HUMAN, QUIET: r.QUIET });
   }
 
+  // busiest time (bot chats; and chats handed to staff)
+  const inRange = read.chats.filter(c => c.ms >= p.main.start && c.ms < p.main.end);
+  const peak = (list, min) => { if (list.length < min) return null; const byHour = new Array(24).fill(0); list.forEach(c => { byHour[wall(c.ms).h]++; }); return byHour.reduce((best, n, h) => (n > byHour[best] ? h : best), 0); };
+  const busiestHour = peak(inRange, CFG.BUSIEST_MIN_CHATS);
+  const busiestHandedHour = peak(inRange.filter(c => c.outcome === 'HUMAN'), CFG.BUSIEST_HANDED_MIN);
+
   // things to check
   const A = CFG.ALERT; const alerts = [];
   const sys = countRange(read.chats, p.last7).systemErrors;
   Object.keys(sys).sort().forEach(l => alerts.push({ level: 'high', text: l + ': seen ' + sys[l] + ' time' + (sys[l] === 1 ? '' : 's') + ' in the last 7 days. Please tell ' + CFG.ADMIN_NAME + '.' }));
   const longEnough = p.days >= CFG.MIN_ALERT_DAYS && (!p.isThisMonth || wall(nowMs).d >= A.MIN_DAY_OF_MONTH);
-  if (canCompare && longEnough) {
+  if (canCompare && longEnough && !events.length) {
     const rises = (n, b) => n >= A.MIN_CHATS && n - b >= A.MIN_RISE && n >= A.MIN_RATIO * b;
-    topicRows.forEach(r => { if (!r.isNew && rises(r.chats, r.compare)) alerts.push({ level: 'mid', text: r.name + ' is up: ' + r.chats + ' chats, compared with ' + r.compare + ' in ' + p.compareText + '.' }); });
+    topicRows.forEach(r => { if (!r.isNew && rises(r.chats, r.compare)) alerts.push({ level: 'mid', text: r.name + ' is up: ' + r.chats + ' bot chats, compared with ' + r.compare + ' in ' + p.compareText + '.' }); });
     Object.keys(main.concerns).forEach(l => { if (l === OTHER_CONCERN) return; const n = main.concerns[l], b = compare.concerns[l] || 0; if (read.firstSeenConcern[l] >= p.compare.start) return; if (rises(n, b)) alerts.push({ level: 'mid', text: 'More customers with "' + l + '": ' + n + ', compared with ' + b + ' in ' + p.compareText + '.' }); });
     const share = (n, t) => (t ? 100 * n / t : 0);
     const shareRise = (n, b) => compare.chats > 0 && main.chats > 0 && share(n, main.chats) - share(b, compare.chats) >= A.SHARE_POINTS && n - b >= A.MIN_RISE;
-    if (shareRise(main.topics.Other || 0, compare.topics.Other || 0)) alerts.push({ level: 'mid', text: 'More chats are "Other" than before. The menu may be missing something.' });
+    if (shareRise(main.topics.Other || 0, compare.topics.Other || 0)) alerts.push({ level: 'mid', text: 'More bot chats are "Other" than before. The menu may be missing something.' });
     if (shareRise(main.noTopic, compare.noTopic)) alerts.push({ level: 'mid', text: 'More customers leave before picking a topic than before.' });
   }
-  return { p, main, compare, today, canCompare, topicRows, concernRows, buckets, unit, busiestDay, busiestHour, months, alerts: alerts.slice(0, A.MAX_LINES) };
+  return { p, main, compare, today, canCompare, events, topicRows, concernRows, res, sub, lists, months, busiestHour, busiestHandedHour, alerts: alerts.slice(0, A.MAX_LINES) };
+}
+
+// ------------------------------------------------------------------ Daily Log (all channels)
+/** Daily Log rows (title lines above the header are fine) to days. Blank = unknown, never zero. */
+function readDaily(values) {
+  const hi = values.findIndex(r => norm(r[0]) === 'date');
+  if (hi === -1) throw new Error('the Daily Log has no "Date" heading row.');
+  const n = values[hi].map(norm); const cols = {};
+  Object.keys(CFG.DAILY_COLUMNS).forEach(f => { for (const name of CFG.DAILY_COLUMNS[f]) { const i = n.indexOf(norm(name)); if (i !== -1) { cols[f] = i; break; } } });
+  const missing = ['date', 'whatsapp', 'instagram', 'tiktok'].filter(f => cols[f] === undefined);
+  if (missing.length) throw new Error('the Daily Log is missing column(s): ' + missing.map(f => CFG.DAILY_COLUMNS[f][0]).join(', ') + '.');
+  const num = v => { const s = String(v == null ? '' : v).trim(); if (s === '' || s === '-') return null; const x = Number(s.replace(/,/g, '')); return isFinite(x) && x >= 0 ? Math.round(x) : null; };
+  const get = (row, f) => (cols[f] === undefined ? null : num(row[cols[f]]));
+  const byDate = {}; let unreadable = 0;
+  values.slice(hi + 1).forEach(row => {
+    const raw = String(row[cols.date] == null ? '' : row[cols.date]).trim(); if (!raw) return;
+    const ms = isoDay(raw); if (ms === null) { unreadable++; return; }
+    const wa = get(row, 'whatsapp') || 0, ig = get(row, 'instagram') || 0, tt = get(row, 'tiktok') || 0, em = get(row, 'email') || 0;
+    const ch = wa + ig + tt + em; const total = get(row, 'total'); const bot = get(row, 'bot'), staff = get(row, 'staff'), none = get(row, 'noreply');
+    const complete = bot !== null && staff !== null && none !== null && bot + staff + none === ch;
+    byDate[raw] = { date: raw, ms, wa, ig, tt, em, ch, total: total === null ? ch : total, bot, staff, none, med: get(row, 'replytime'), complete };
+  });
+  const days = Object.keys(byDate).map(k => byDate[k]).sort((a, b) => a.ms - b.ms);
+  return { days, unreadable, firstMs: days.length ? days[0].ms : null, lastMs: days.length ? days[days.length - 1].ms : null };
+}
+
+/** Value at position p (0 to 1) of sorted numbers, the "exclusive" way (median for p = 0.5). */
+function percentile(xs, p) {
+  const n = xs.length; if (!n) return null;
+  const pos = p * (n + 1); const j = Math.floor(pos); const d = pos - j;
+  if (j < 1) return xs[0]; if (j >= n) return xs[n - 1];
+  return xs[j - 1] + d * (xs[j] - xs[j - 1]);
+}
+
+/** Totals for a list of days. Volume uses every day; who-answered and reply time use complete days only (rule A2, A3). */
+function aggDaily(list) {
+  const o = { days: list.length, enq: 0, wa: 0, ig: 0, tt: 0, em: 0, completeDays: 0, incomplete: [], bot: 0, staff: 0, none: 0, meds: [] };
+  list.forEach(d => {
+    o.enq += d.total; o.wa += d.wa; o.ig += d.ig; o.tt += d.tt; o.em += d.em;
+    if (!d.complete) { o.incomplete.push(d); return; }
+    o.completeDays++; o.bot += d.bot; o.staff += d.staff; o.none += d.none;
+    if (d.med !== null && d.staff >= CFG.MIN_STAFF_FOR_TIME) o.meds.push(d.med);
+  });
+  o.who = o.bot + o.staff + o.none;
+  o.perDay = o.days ? o.enq / o.days : null;
+  const s = o.meds.slice().sort((a, b) => a - b);
+  o.reply = s.length ? { n: s.length, mid: Math.round(percentile(s, 0.5)), lo: Math.round(percentile(s, 0.25)), hi: Math.round(percentile(s, 0.75)) } : null;
+  return o;
+}
+
+/** Everything Part A shows, for one period. */
+function summarizeA(rd, nowMs, key, logStartMs) {
+  const p = periodFor(key, nowMs, logStartMs);
+  const lastEnd = rd.days.length ? rd.lastMs + DAY : 0;
+  const mainEnd = Math.min(p.main.end, lastEnd);
+  const inR = (s, e) => rd.days.filter(d => d.ms >= s && d.ms < e);
+  const mainList = inR(p.main.start, mainEnd), cmpList = inR(p.compare.start, p.compare.end);
+  const cmpExpected = Math.ceil((p.compare.end - p.compare.start) / DAY - 1e-9);
+  const main = aggDaily(mainList), cmp = aggDaily(cmpList);
+  const covered = rd.days.length > 0 && cmpExpected > 0 && mainList.length > 0 && p.compare.start >= rd.firstMs && cmpList.length === cmpExpected;
+  const shareOk = covered && main.completeDays >= CFG.MIN_COMPLETE_SHARE * main.days && cmp.completeDays >= CFG.MIN_COMPLETE_SHARE * cmp.days;
+  const events = uniq(eventsTouching(p.main.start, mainEnd).concat(covered ? eventsTouching(p.compare.start, p.compare.end) : []));
+
+  // busiest / quietest weekday: the middle value per weekday, only with enough of each weekday (rule A5)
+  let weekday = null;
+  const per = [[], [], [], [], [], [], []]; mainList.forEach(d => per[wall(d.ms).dow].push(d.total));
+  if (per.every(a => a.length >= CFG.WEEKDAY_MIN_EACH)) {
+    const mid = per.map(a => percentile(a.slice().sort((x, y) => x - y), 0.5));
+    const order = [1, 2, 3, 4, 5, 6, 0].sort((a, b) => mid[b] - mid[a]);
+    const top = order[0], second = order[1], low = order[6];
+    const lowGroup = order.filter(d => mid[d] <= mid[low] * 1.05);            // the quietest day(s), ties included
+    const outside = order.filter(d => lowGroup.indexOf(d) === -1);            // everything else, busiest first
+    const nextUp = outside.length ? outside[outside.length - 1] : null;       // the quietest day that is NOT in the group
+    weekday = {
+      busiest: mid[top] >= CFG.WEEKDAY_LEAD * mid[second] ? { day: DAYS[top], n: Math.round(mid[top]) } : null,
+      quietest: nextUp !== null && mid[nextUp] >= CFG.WEEKDAY_LEAD * mid[low] && lowGroup.length <= 2 ? { days: lowGroup.slice().sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)).map(d => DAYS[d]), n: Math.round(mid[low]) } : null,
+      mid,
+    };
+  }
+
+  // chart: enquiries per day (per week for long periods); days inside a special event are marked
+  const span = Math.max(0, mainEnd - p.main.start); const unit = span <= 62 * DAY ? 'day' : 'week';
+  const buckets = [];
+  if (unit === 'day') for (let t = p.main.start; t < mainEnd; t += DAY) { const d = mainList.find(x => x.ms === t); buckets.push({ start: t, end: t + DAY, label: dayText(t), total: d ? d.total : 0, missing: !d }); }
+  else for (let t = p.main.start; t < mainEnd; t += 7 * DAY) { const e = Math.min(t + 7 * DAY, mainEnd); buckets.push({ start: t, end: e, label: dayText(t), partial: e - t < 7 * DAY, total: mainList.filter(d => d.ms >= t && d.ms < e).reduce((a, d) => a + d.total, 0) }); }
+  buckets.forEach(b => { b.event = eventsTouching(b.start, b.end).length > 0; });
+
+  // months (whole log)
+  const months = []; const nw = wall(nowMs);
+  for (let i = 5; i >= 0; i--) {
+    const start = fromWall(nw.y, nw.m - i, 1); const sw = wall(start); const end = fromWall(sw.y, sw.m + 1, 1);
+    const list = inR(start, end); if (!list.length) continue;
+    months.push(Object.assign({ label: MONTHS[sw.m] + ' ' + sw.y + (lastEnd < end ? ' (so far)' : '') }, aggDaily(list)));
+  }
+
+  // things to check
+  const alerts = [];
+  if (rd.days.length && nowMs - lastEnd > CFG.DAILY_STALE_HOURS * 3600000) alerts.push({ level: 'high', text: 'The Daily Log has not been filled since ' + dayText(rd.lastMs) + '. Please tell ' + CFG.ADMIN_NAME + '.' });
+  if (shareOk && mainList.length >= CFG.NOREPLY_ALERT_DAYS && !events.length && main.who && cmp.who) {
+    const a = 100 * main.none / main.who, b = 100 * cmp.none / cmp.who;
+    if (a - b >= CFG.NOREPLY_ALERT_POINTS) alerts.push({ level: 'mid', text: 'No reply from us is up: ' + Math.round(a) + '% of enquiries, compared with ' + Math.round(b) + '% in ' + p.compareText + '.' });
+  }
+
+  // the morning line
+  let morning = null;
+  if (rd.days.length) {
+    const last = rd.days[rd.days.length - 1]; const yes = toIso(nowMs - DAY) === last.date;
+    morning = (yes ? 'Yesterday (' : 'Latest day in the Daily Log (') + dayText(last.ms) + '): ' + last.total + ' enquiries' + (last.none === null ? '.' : ', ' + last.none + ' with no reply from us.');
+  }
+  return { p, main, cmp, covered, shareOk, events, weekday, buckets, unit, months, alerts, morning, mainList, lastMs: rd.lastMs, mainEnd };
+}
+
+/** Days with 10+ WhatsApp enquiries in the Daily Log but no bot chats in the Tracker (rule B7). */
+function botLogGaps(rd, read, p) {
+  if (!rd || !read || read.logStartMs === null) return [];
+  const per = {}; read.chats.forEach(c => { const k = dayStart(c.ms); per[k] = (per[k] || 0) + 1; });
+  const start = dayStart(read.logStartMs);
+  return rd.days.filter(d => d.ms >= p.main.start && d.ms < p.main.end && d.ms >= start && d.wa >= CFG.MISSING_LOG_MIN_WA && !per[d.ms]).map(d => d.ms);
 }
 /* ==================================================================== LOGIC-END */
 
-// ============================================================ page
+// ============================================================ page (look and layout only; every number comes from the logic block above)
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const num = n => Number(n).toLocaleString('en-US');
 const share = (n, t) => (!t ? '–' : t < CFG.SMALL_TOTAL ? String(n) : Math.round(100 * n / t) + '%');
+const pct = (n, t) => (!t ? '–' : Math.round(100 * n / t) + '%');
+/** One number style everywhere: "154 (28%)". Under SMALL_TOTAL the percentage is left out. */
+const np = (n, t) => (!t || t < CFG.SMALL_TOTAL ? num(n) : num(n) + ' <span class="pc">(' + Math.round(100 * n / t) + '%)</span>');
+const npText = (n, t) => (!t || t < CFG.SMALL_TOTAL ? num(n) : num(n) + ' (' + Math.round(100 * n / t) + '%)');
 const hourText = h => { const f = x => { x %= 24; return x === 0 ? '12 am' : x < 12 ? x + ' am' : x === 12 ? '12 pm' : (x - 12) + ' pm'; }; return f(h) + ' to ' + f(h + 1); };
+const hourShort = h => { const p = x => { x = ((x % 24) + 24) % 24; return { n: x % 12 || 12, ap: x < 12 ? 'am' : 'pm' }; }; const a = p(h), b = p(h + 1); return a.ap === b.ap ? a.n + '–' + b.n + ' ' + a.ap : a.n + ' ' + a.ap + '–' + b.n + ' ' + b.ap; };
 const clock = ms => { const w = wall(ms); return (w.h % 12 || 12) + ':' + String(w.mi).padStart(2, '0') + (w.h < 12 ? ' am' : ' pm'); };
-const stamp = ms => { const w = wall(ms); return w.d + ' ' + MONTHS[w.m].slice(0, 3) + ' ' + w.y + ', ' + clock(ms); };
+const joinAnd = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
 const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
+const monthLabel = l => String(l).replace(/ \(so far\)$/, '');
 
-let READ = null, LAST_TEXT = null, FETCHED_AT = null, LOADING = false, CHART = null, RENDER_DAY = null, KEY = null;
+/* The two sources, named the same way everywhere on the page. */
+const SRC_A = 'Daily Log (SleekFlow data)', SRC_B = 'WhatsApp FAQ customer data';
+const TAG_A = 'Daily Log', TAG_B = 'WhatsApp FAQ';
+/* Everyday words for how a WhatsApp FAQ chat ended. Display only: the counting above still uses its own labels. */
+const WORD = { BOT: 'Completed by bot', HUMAN: 'Human assistance', QUIET: 'Customer stopped replying', UNKNOWN: 'Ending unknown' };
+const OUTCOME_COLOUR = { BOT: 'ok', HUMAN: 'person', QUIET: 'quiet', UNKNOWN: 'unknown' };
+/* Channel colours (charts only). */
+const CHANNELS = [['WhatsApp', 'wa'], ['Instagram', 'ig'], ['TikTok', 'tt'], ['Email', 'em']];
+/* "Common concerns" on the Overview leaves out routine choices that are not problems. Display only: the WhatsApp FAQ tab still lists every sub-topic. */
+const NOT_A_CONCERN = ['Order found', 'Pick-up open', 'General size guide', 'Sent online return link', 'Bought in store'];
 
-async function load(manual) {
-  if (LOADING) return; LOADING = true; $('#refresh').disabled = true;
+let READ_A = null, READ_B = null, TEXT_A = null, TEXT_B = null, ERR_A = null, ERR_B = null, FETCHED_AT = null, LOADING = false, CHARTS = [], RENDER_DAY = null, KEY = null;
+
+async function fetchCsv(url) {
   const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), CFG.FETCH_TIMEOUT_S * 1000);
   try {
-    const res = await fetch(CFG.CSV_URL + (CFG.CSV_URL.includes('?') ? '&' : '?') + 't=' + Date.now(), { cache: 'no-store', signal: ctrl.signal });
+    const res = await fetch(url + (url.includes('?') ? '&' : '?') + 't=' + Date.now(), { cache: 'no-store', signal: ctrl.signal });
     if (!res.ok) throw new Error('the data link answered ' + res.status + '.');
     const text = await res.text();
     if (/^\s*</.test(text)) throw new Error('the data link returned a web page, not data. Is the sheet still published to the web?');
-    FETCHED_AT = Date.now(); LOAD_ERROR = null;
-    const newDay = RENDER_DAY !== toIso(Date.now());
-    if (text !== LAST_TEXT || newDay) { READ = readChats(parseCSV(text)); LAST_TEXT = text; fillPeriods(); render(!manual && CHART !== null); }
-    else { renderMeta(); renderNotices(); }
-  } catch (e) {
-    LOAD_ERROR = e.name === 'AbortError' ? 'the data link took too long to answer.' : e.message;
-    renderNotices();
-    if (!READ) $('#app').innerHTML = '';
-  } finally { clearTimeout(timer); LOADING = false; $('#refresh').disabled = false; }
+    return text;
+  } catch (e) { throw new Error(e.name === 'AbortError' ? 'the data link took too long to answer.' : e.message); }
+  finally { clearTimeout(timer); }
 }
-let LOAD_ERROR = null;
+
+async function load(manual) {
+  if (LOADING) return; LOADING = true; $('#refresh').disabled = true;
+  try {
+    const [a, b] = await Promise.allSettled([fetchCsv(CFG.DAILY_CSV_URL), fetchCsv(CFG.CSV_URL)]);
+    let changed = false;
+    if (a.status === 'fulfilled') { if (a.value !== TEXT_A) { try { READ_A = readDaily(parseCSV(a.value)); TEXT_A = a.value; ERR_A = null; changed = true; } catch (e) { ERR_A = e.message; } } else ERR_A = null; }
+    else ERR_A = a.reason.message;
+    if (b.status === 'fulfilled') { if (b.value !== TEXT_B) { try { READ_B = readChats(parseCSV(b.value)); TEXT_B = b.value; ERR_B = null; changed = true; } catch (e) { ERR_B = e.message; } } else ERR_B = null; }
+    else ERR_B = b.reason.message;
+    FETCHED_AT = Date.now();
+    const newDay = RENDER_DAY !== toIso(Date.now());
+    if (changed || newDay || !RENDERED) { fillPeriods(); render(!manual && CHARTS.length > 0); RENDERED = true; }
+    else { renderMeta(); renderNotices(); }
+  } finally { LOADING = false; $('#refresh').disabled = false; }
+}
+let RENDERED = false;
+
+const firstMs = () => { const v = [READ_A && READ_A.firstMs, READ_B && READ_B.logStartMs].filter(x => x !== null && x !== undefined); return v.length ? Math.min.apply(null, v) : null; };
 
 function fillPeriods() {
-  const sel = $('#period');
+  const sel = $('#period'); const start = firstMs();
   const nw = wall(Date.now()); const opts = [['this', 'This month'], ['last', 'Last month'], ['d7', 'Last 7 days'], ['d30', 'Last 30 days']];
   const months = [];
-  if (READ.logStartMs !== null) {
-    const s = wall(READ.logStartMs); let y = s.y, m = s.m;
+  if (start !== null) {
+    const s = wall(start); let y = s.y, m = s.m;
     while (y < nw.y || (y === nw.y && m < nw.m)) { months.push(['m:' + y + '-' + String(m + 1).padStart(2, '0'), MONTHS[m] + ' ' + y]); m++; if (m > 11) { m = 0; y++; } }
   }
   months.reverse();
@@ -540,7 +998,7 @@ function fillPeriods() {
     '<option value="custom">Custom dates</option>';
   const today = toIso(Date.now());
   $('#from').max = today; $('#to').max = today;
-  if (READ.logStartMs !== null) { $('#from').min = toIso(READ.logStartMs); $('#to').min = toIso(READ.logStartMs); }
+  if (start !== null) { $('#from').min = toIso(start); $('#to').min = toIso(start); }
   if (!KEY) KEY = startKey();
   sel.value = KEY.startsWith('r:') ? 'custom' : (opts.concat(months).some(o => o[0] === KEY) ? KEY : 'this');
   if (sel.value === 'this' && KEY !== 'this' && !KEY.startsWith('r:')) KEY = 'this';
@@ -551,7 +1009,11 @@ function startKey() {
   const q = new URLSearchParams(location.search); const f = q.get('from'), t = q.get('to');
   if (isoDay(f) !== null && isoDay(t) !== null) return 'r:' + f + ':' + t;
   const saved = store('period');
-  return saved && /^(this|last|d7|d30|m:\d{4}-\d{2}|r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2})$/.test(saved) ? saved : 'this';
+  if (saved && saved !== 'this' && /^(last|d7|d30|m:\d{4}-\d{2}|r:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2})$/.test(saved)) return saved;
+  // Nothing picked yet. On the first days of a month there is no data for "This month", so open on last month until some arrives.
+  const w = wall(Date.now()); const monthStart = fromWall(w.y, w.m, 1);
+  const hasThisMonth = (READ_A && READ_A.lastMs !== null && READ_A.lastMs >= monthStart) || (READ_B && READ_B.newestMs !== null && READ_B.newestMs >= monthStart);
+  return hasThisMonth || (!READ_A && !READ_B) ? 'this' : 'last';
 }
 
 function setKey(k) {
@@ -563,120 +1025,574 @@ function setKey(k) {
   render();
 }
 
-function renderMeta(S) {
+let LAST = null;
+function renderMeta(SA, SB) {
   const bits = [];
-  if (S) bits.push(S.canCompare ? 'Compared with ' + esc(S.p.compareText) : 'No earlier period to compare with');
+  const S = SA || SB || (LAST && (LAST.SA || LAST.SB));
+  if (FETCHED_AT) bits.push('Last updated ' + esc(clock(FETCHED_AT)));
   bits.push('Malaysia time');
-  if (READ) { const td = countRange(READ.chats, periodFor('this', Date.now()).today).chats; bits.push('Today so far: ' + td + ' chat' + (td === 1 ? '' : 's')); }
-  if (FETCHED_AT) bits.push('Data checked ' + esc(clock(FETCHED_AT)));
+  if (S) bits.push(S.covered || S.canCompare ? 'Compared with ' + esc(S.p.compareText) : 'No earlier period to compare with');
+  if (READ_A && READ_A.lastMs !== null) bits.push('Daily Log filled up to ' + esc(dayText(READ_A.lastMs)));
   $('#meta').innerHTML = bits.join(' · ');
 }
 
-function renderNotices(S) {
+function renderNotices(SA, SB) {
+  if (!SA && !SB && LAST) { SA = LAST.SA; SB = LAST.SB; }
   const n = [];
-  if (LOAD_ERROR) n.push('<div class="notice"><p><b>Couldn\'t load the latest data:</b> ' + esc(LOAD_ERROR) + (READ ? ' Showing the last data that loaded.' : ' Please tell ' + esc(CFG.ADMIN_NAME) + '.') + '</p></div>');
-  if (READ && READ.newestMs !== null && Date.now() - READ.newestMs > CFG.STALE_HOURS * 3600000) n.push('<div class="notice"><p><b>No new chats since ' + esc(stamp(READ.newestMs)) + '.</b> If customers have been messaging, the bot may have stopped sending data. Please tell ' + esc(CFG.ADMIN_NAME) + '.</p></div>');
-  if (S && S.main.sample) n.push('<div class="notice info"><p><b>Sample data:</b> ' + S.main.sample + ' of the ' + S.main.chats + ' chats in this period are made-up test rows (Flow Version ' + esc(CFG.SAMPLE_VERSION) + '). Delete them from the sheet before using these numbers.</p></div>');
+  const tech = e => '<p class="tech">Technical detail for ' + esc(CFG.ADMIN_NAME) + ': ' + esc(e) + '</p>';
+  if (ERR_A) n.push('<div class="notice"><p><b>We could not load the ' + SRC_A + '.</b> ' + (READ_A ? 'Showing the last numbers that loaded.' : 'The ' + SRC_B + ' is still correct. Please tell ' + esc(CFG.ADMIN_NAME) + '.') + '</p>' + tech(ERR_A) + '</div>');
+  if (ERR_B) n.push('<div class="notice"><p><b>We could not load the ' + SRC_B + '.</b> ' + (READ_B ? 'Showing the last numbers that loaded.' : 'The ' + SRC_A + ' is still correct. Please tell ' + esc(CFG.ADMIN_NAME) + '.') + '</p>' + tech(ERR_B) + '</div>');
+  if (SB && SB.main.sample) n.push('<div class="notice info"><p><b>Sample data:</b> ' + SB.main.sample + ' of the ' + SB.main.chats + ' WhatsApp FAQ chats in this period are made-up test rows. Remove them from the sheet before using these numbers.</p><p class="tech">Rows marked ' + esc(CFG.SAMPLE_VERSION) + ' in the Flow Version column.</p></div>');
+  const S = SA || SB; const evs = uniq(((SA && SA.events) || []).concat((SB && SB.events) || []));
+  if (evs.length) n.push('<div class="notice info"><p>This period, or the one it is compared with, includes ' + esc(joinAnd(evs)) + '. Comparisons are for information only and no warnings are raised.</p></div>');
   if (S && S.p.notes.length) n.push('<div class="notice info"><p>' + S.p.notes.map(esc).join(' ') + '</p></div>');
   $('#notices').innerHTML = n.join('');
 }
 
-function render(quiet) {
-  if (!READ) return;
-  const S = summarize(READ, Date.now(), KEY || 'this'); const m = S.main, c = S.compare;
-  RENDER_DAY = toIso(Date.now());
-  $('#title').textContent = 'Customer chats · ' + S.p.title;
-  $('#from').value = toIso(S.p.main.start); $('#to').value = toIso(Math.min(S.p.main.end, S.p.today.end) - 1);
-  renderMeta(S); renderNotices(S);
+/* Standard words. The third column is for whoever fills in the sheets. */
+const DEFS = [
+  ['Enquiries', 'Customers who messaged us on any channel. One customer, one channel, one day = 1. From the Daily Log.', 'Total Enquiries', 'Volume'],
+  ['Bot or auto-reply only', 'No staff reply that day, only the bot or an auto-reply. Not proof the problem was solved.', 'AI / FAQ Resolved', 'Automation only'],
+  ['Answered by staff', 'A staff member replied at least once that day.', 'Human / Actionable Cases', 'Agent handled'],
+  ['No reply from us (same day)', 'Nobody on our side replied that day: no bot, no auto-reply, no staff. Late-night messages answered the next morning count here.', 'No Reply (Same Day)', 'Unanswered'],
+  ['Staff reply time', 'Clock time from the customer\'s first message of the day to the first staff reply, on a typical day. Nights and weekends included. Same-day replies only.', 'Staff Reply Time (Median Mins)', 'First staff reply time'],
+  ['Chat', 'One WhatsApp conversation with the FAQ menu, from the greeting to its ending. From the WhatsApp FAQ customer data.', 'One row in ENQUIRY LOG', 'Bot chat'],
+  ['Topic', 'The menu option the customer tapped.', 'Topics', 'Chosen topic'],
+  ['Sub-topic', 'The choice inside a topic, for example Wide feet.', 'Details', 'Concern'],
+  ['Completed by bot', 'The customer finished with "Nope, that\'s all". No person was needed.', 'RESOLVED BY BOT', 'Resolved by bot'],
+  ['Human assistance', 'The menu passed the chat to a person. Often on purpose, for example refunds and damaged items. It is not a failure.', 'RESOLVED BY HUMAN', 'Handed to staff'],
+  ['Customer stopped replying', 'The customer went quiet, got one reminder, and the chat was closed. Includes customers who got their answer and left. It does not mean we stopped replying.', 'CUSTOMER DIDNT REPLY', 'Drop-off'],
+];
 
-  const d = S.canCompare ? m.chats - c.chats : null;
-  const of = (n, t) => (t < CFG.SMALL_TOTAL ? 'out of ' + t + ' chats' : n + ' of ' + t + ' chats');
-  const cell = (label, key, value, note) => '<div><div class="s-label">' + (key ? '<span class="key" style="background:var(--' + key + ')"></span>' : '') + label + '</div><div class="s-value">' + value + '</div><div class="s-note">' + note + '</div></div>';
-  let h = '';
+let OPEN = new Set(), EXPANDABLE = [], TAB = 'overview';
+const TABS = ['overview', 'all-channels', 'bot', 'definitions'];
+const CHEV = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4.5 2.5 8 6l-3.5 3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-  // 1 Summary
-  h += '<section><h2><span class="n">1</span>Summary</h2>';
-  h += '<div class="summary">' +
-    cell('Total chats', '', m.chats, d === null ? 'No earlier period to compare' : d === 0 ? 'Same as ' + esc(S.p.compareText) + ' (' + c.chats + ')' : (d > 0 ? '+' : '') + d + ' vs ' + esc(S.p.compareText) + ' (' + c.chats + ')') +
-    cell('Finished without staff', 'ok', share(m.BOT, m.chats), of(m.BOT, m.chats)) +
-    cell('Needed a person', 'person', share(m.HUMAN, m.chats), of(m.HUMAN, m.chats)) +
-    cell('Customer stopped replying', 'quiet', share(m.QUIET, m.chats), of(m.QUIET, m.chats)) + '</div>';
-  if (m.chats) {
-    const parts = ['BOT', 'HUMAN', 'QUIET', 'UNKNOWN'].filter(k => m[k]);
-    h += '<div class="split" role="img" aria-label="How chats ended">' + parts.map(k => '<span title="' + OUTCOME_LABEL[k] + ': ' + m[k] + '" style="width:' + (100 * m[k] / m.chats) + '%;background:var(--' + { BOT: 'ok', HUMAN: 'person', QUIET: 'quiet', UNKNOWN: 'unknown' }[k] + ')"></span>').join('') + '</div>';
-    if (m.UNKNOWN) h += '<p class="s-note">' + m.UNKNOWN + ' chat(s) have an ending the page doesn\'t recognise. Please tell ' + esc(CFG.ADMIN_NAME) + '.</p>';
-  }
-  if (S.alerts.length) h += '<div class="notice" style="margin:12px 0 10px"><p><b>Things to check</b></p>' + S.alerts.map(a => '<p>' + esc(a.text) + '</p>').join('') + '</div>';
-  h += '</section>';
+/* ---- small building blocks */
+const cardHead = (title, src, link, note) => '<div class="card-h"><div><h3>' + title + '</h3>' + (note ? '<p class="note">' + note + '</p>' : '') + (src ? '<p class="src">' + esc(src) + '</p>' : '') + '</div>' + (link ? '<a class="more noprint" href="#' + link[0] + '">' + esc(link[1]) + ' →</a>' : '') + '</div>';
+const msg = (title, t) => '<section class="card">' + cardHead(title) + '<p class="muted">' + t + '</p></section>';
+const pageHead = (title, lead, src) => '<div class="pagehead"><h2>' + title + '</h2><p>' + lead + '</p>' + (src ? '<p class="src">' + esc(src) + '</p>' : '') + '</div>';
+const panel = (id, inner) => '<div class="tabpanel" role="tabpanel" id="p-' + id + '" data-tab="' + id + '" aria-labelledby="tab-' + id + '" tabindex="-1">' + inner + '</div>';
+const tabFromHash = () => { const h = location.hash.slice(1); return TABS.indexOf(h) >= 0 ? h : 'overview'; };
+const key = c => '<span class="key" style="background:var(--' + c + ')"></span>';
+const kpi = o => '<div class="kpi"><p class="k-label">' + (o.dot ? key(o.dot) : '') + o.label + '</p>' +
+  '<p class="k-val' + (o.txt ? ' txt' : '') + '">' + o.value + '</p>' + (o.sub ? '<p class="k-sub">' + o.sub + '</p>' : '') + (o.cmp ? '<p class="k-cmp">' + o.cmp + '</p>' : '') + (o.def ? '<p class="def">' + o.def + '</p>' : '') + (o.src ? '<p class="k-src">' + o.src + '</p>' : '') + '</div>';
+const alertBox = al => (al.length ? '<div class="status warn" role="status"><span class="ico" aria-hidden="true">!</span><div><p class="st-h">Things to check</p><ul>' + al.map(a => '<li>' + esc(a.text) + '</li>').join('') + '</ul></div></div>' : '');
+const splitBar = (parts, total, label) => '<div class="oc-bar" role="img" aria-label="' + esc(label + ': ' + parts.map(x => x[2] + ' ' + pct(x[1], total)).join(', ')) + '">' + parts.filter(x => x[1]).map(x => '<span title="' + esc(x[2] + ': ' + x[1]) + '" style="flex:' + x[1] + ' 1 0;background:var(--' + x[0] + ')"></span>').join('') + '</div>';
+const ofChats = (n, t) => (t < CFG.SMALL_TOTAL ? n + ' out of ' + t + ' chats' : num(n) + ' of ' + num(t) + ' chats');
+const legend = items => '<div class="legend">' + items.map(x => '<span><i' + (x.ev ? ' class="ev"' : ' style="background:var(--' + x.c + ')"') + '></i>' + x.t + '</span>').join('') + '</div>';
+const isMonthKey = k => /^(this|last|m:)/.test(k || '');
 
-  // 2 Topics
-  const maxT = Math.max(1, ...S.topicRows.map(r => r.chats), m.noTopic);
-  h += '<section><h2><span class="n">2</span>What customers asked about</h2><p class="lead">Biggest first. One chat can cover more than one topic, so the topics add up to more than the total.</p>';
-  h += '<div class="tablewrap"><table><thead><tr><th>Topic</th><th class="num">Chats</th><th></th><th class="num">Needed a person</th><th class="num">vs ' + esc(S.p.compareText) + '</th></tr></thead><tbody>';
-  S.topicRows.forEach(r => { h += '<tr><td>' + esc(r.name) + '</td><td class="num">' + r.chats + '</td><td class="barcell"><div class="bar" style="width:' + (100 * r.chats / maxT) + '%"></div></td><td class="num">' + r.human + '</td><td class="num muted">' + r.vs.t + '</td></tr>'; });
-  if (m.noTopic) { const dv = S.canCompare ? diffText(m.noTopic - c.noTopic) : { t: '–' }; h += '<tr><td class="muted">Didn\'t pick a topic</td><td class="num">' + m.noTopic + '</td><td class="barcell"><div class="bar" style="opacity:.45;width:' + (100 * m.noTopic / maxT) + '%"></div></td><td class="num">' + m.noTopicHuman + '</td><td class="num muted">' + dv.t + '</td></tr>'; }
-  if (!S.topicRows.length && !m.noTopic) h += '<tr><td colspan="5" class="muted">No chats in this period.</td></tr>';
-  h += '</tbody></table></div></section>';
+/** Ranked horizontal bars. rows: { name, sub, n, p, vs, c }. The first row is the strongest bar unless rows carry their own colour. */
+function rankBars(rows, o) {
+  o = o || {}; const max = Math.max(1, ...rows.map(r => r.n));
+  const withVs = rows.some(r => r.vs);
+  return '<ol class="rank">' + rows.map((r, i) => '<li class="rk' + (i === 0 && !r.c ? ' first' : '') + (o.narrow ? ' narrow' : withVs ? ' cmp' : '') + '"><span class="rk-name">' + esc(r.name) + (r.sub ? '<small>' + esc(r.sub) + '</small>' : '') + '</span>' +
+    '<span class="rk-track" aria-hidden="true"><i style="width:' + (100 * r.n / max) + '%' + (r.c ? ';background:var(--' + r.c + ')' : '') + '"></i></span><span class="rk-n">' + num(r.n) + '</span>' + (o.narrow ? '' : '<span class="rk-p">' + (r.p || '') + '</span>') + (withVs && !o.narrow ? '<span class="rk-vs">' + esc(r.vs || '') + '</span>' : '') + '</li>').join('') + '</ol>';
+}
 
-  // 3 Concerns
-  h += '<section><h2><span class="n">3</span>Specific problems</h2><p class="lead">What exactly customers needed inside each topic.</p>';
-  if (S.concernRows.length) {
-    const maxC = Math.max(...S.concernRows.map(r => r.chats));
-    h += '<div class="tablewrap"><table><thead><tr><th>Problem</th><th class="num">Chats</th><th></th><th class="num">Needed a person</th></tr></thead><tbody>' +
-      S.concernRows.map(r => '<tr><td' + (r.label === OTHER_CONCERN ? ' class="muted"' : '') + '>' + esc(r.label) + '</td><td class="num">' + r.chats + '</td><td class="barcell"><div class="bar" style="width:' + (100 * r.chats / maxC) + '%"></div></td><td class="num">' + r.human + '</td></tr>').join('') + '</tbody></table></div>';
-  } else h += '<p class="muted">None recorded in this period. The bot only sends topics for now.</p>';
-  h += '</section>';
+function takeaway(SB) {
+  const rows = SB.topicRows; if (!rows.length) return '';
+  const tied = rows.filter(r => r.chats === rows[0].chats);
+  const names = joinAnd(tied.map(r => '<b>' + esc(r.name) + '</b>'));
+  return '<p class="lede">' + (tied.length > 1 ? names + ' are the topics customers ask about most.' : names + ' is what customers ask about most: ' + num(rows[0].chats) + ' of ' + num(SB.main.chats) + ' chats.') + '</p>';
+}
 
-  // 4 When
-  const unitText = { hour: 'per hour', day: 'per day', week: 'per week' }[S.unit];
-  h += '<section><h2><span class="n">4</span>When customers message us</h2><p class="lead">Chats ' + unitText + ', Malaysia time, by the time of the customer\'s last message.</p>';
-  h += '<div class="chart"><canvas id="cTime" role="img" aria-label="Chats ' + unitText + '"></canvas></div><p id="nochart" class="muted"></p>';
+/** Enquiries per channel for each chart bar (day or week). Display only: sums the Daily Log columns already read above. */
+function channelBuckets(SA) {
+  return SA.buckets.map(b => { const o = { wa: 0, ig: 0, tt: 0, em: 0 }; SA.mainList.forEach(d => { if (d.ms >= b.start && d.ms < b.end) { o.wa += d.wa; o.ig += d.ig; o.tt += d.tt; o.em += d.em; } }); return o; });
+}
+const activeChannels = SA => CHANNELS.filter(c => c[1] !== 'em' || SA.main.em > 0);
+function timeChart(SA, id) {
+  return legend(activeChannels(SA).map(c => ({ c: c[1], t: c[0] + ' <b>' + num(SA.main[c[1]]) + '</b>' }))) +
+    '<div class="chart"><canvas class="js-time" id="' + id + '" role="img" aria-label="Enquiries per ' + SA.unit + ', by channel"></canvas></div><p class="nochart muted"></p>';
+}
+function timeFacts(SA) {
   const facts = [];
-  if (S.busiestDay) facts.push('Busiest day: <b>' + S.busiestDay.day + 's</b> (about ' + (Math.round(S.busiestDay.avg * 10) / 10) + ' chats a day)');
-  if (S.busiestHour !== null) facts.push('Busiest time: <b>' + hourText(S.busiestHour) + '</b>');
-  if (!facts.length) facts.push('<span class="muted">Busiest day and time show for periods of 7 days or more with at least ' + CFG.BUSIEST_MIN_CHATS + ' chats.</span>');
-  h += '<div class="facts">' + facts.map(x => '<span>' + x + '</span>').join('') + '</div></section>';
+  if (SA.weekday && SA.weekday.busiest) facts.push('Busiest day: <b>' + SA.weekday.busiest.day + 's</b> (typical ' + SA.weekday.busiest.n + ' a day)');
+  if (SA.weekday && SA.weekday.quietest) facts.push('Quietest days: <b>' + joinAnd(SA.weekday.quietest.days) + '</b> (typical ' + SA.weekday.quietest.n + ' a day)');
+  return facts.length ? '<div class="facts">' + facts.map(x => '<span class="fact">' + x + '</span>').join('') + '</div>' : '';
+}
 
-  // 5 Months
-  if (S.months.length) {
-    h += '<section><h2><span class="n">5</span>Month by month</h2><p class="lead">All chats in the log, whatever period is picked above.</p><div class="tablewrap"><table><thead><tr><th>Month</th><th class="num">Chats</th><th class="num">Finished without staff</th><th class="num">Needed a person</th><th class="num">Stopped replying</th></tr></thead><tbody>' +
-      S.months.map(r => '<tr><td>' + esc(r.label) + '</td><td class="num">' + r.chats + '</td><td class="num">' + share(r.BOT, r.chats) + '</td><td class="num">' + share(r.HUMAN, r.chats) + '</td><td class="num">' + share(r.QUIET, r.chats) + '</td></tr>').join('') + '</tbody></table></div></section>';
-  }
+/** Completed-by-bot count per sub-topic, on the same base as the sub-topic table (chats since that topic's sub-topics were first recorded). Display only. */
+function subBotCounts(read, r) {
+  const out = {}; let noTopicBot = 0;
+  read.chats.forEach(c => {
+    if (c.ms < r.start || c.ms >= r.end || c.outcome !== 'BOT') return;
+    if (!c.topics.length) { noTopicBot++; return; }
+    c.topics.forEach(t => {
+      if (!(t in read.firstSubMs) || c.ms < dayStart(read.firstSubMs[t])) return;
+      const o = out[t] || (out[t] = { subs: {}, noSub: 0 });
+      const mine = uniq(c.subs.filter(s => s.topic === t).map(s => s.label));
+      if (!mine.length) o.noSub++; else mine.forEach(l => { o.subs[l] = (o.subs[l] || 0) + 1; });
+    });
+  });
+  return { tables: out, noTopicBot };
+}
 
-  // Notes
-  const st = READ.stats; const notes = [
-    'Needed a person is often on purpose, for example refunds, damaged items or orders that couldn\'t be found. It is not a failure.',
-    'A chat is counted once it reaches an ending in the chat bot. This page doesn\'t measure staff and isn\'t the complaint case list.',
-    'Only topics, outcomes and times are stored. No names, phone numbers or messages.',
+function setTab(t, write, focus) {
+  TAB = t;
+  document.querySelectorAll('.tab').forEach(b => { const on = b.dataset.tab === t; b.setAttribute('aria-selected', on ? 'true' : 'false'); b.tabIndex = on ? 0 : -1; if (on && focus) b.focus(); if (on && write) b.scrollIntoView({ block: 'nearest', inline: 'center' }); });
+  document.querySelectorAll('.tabpanel').forEach(p => { p.hidden = p.dataset.tab !== t; });
+  $('#filters').hidden = t === 'definitions';
+  if (write) { try { history.replaceState(null, '', location.pathname + location.search + '#' + t); } catch (e) { /* file:// */ } }
+  CHARTS.forEach(c => c.resize());
+}
+
+function render(quiet) {
+  const rd = READ_A, rb = READ_B; const nowMs = Date.now();
+  RENDER_DAY = toIso(nowMs);
+  const logStart = firstMs();
+  const SA = rd && rd.days.length ? summarizeA(rd, nowMs, KEY || 'this', logStart) : null;
+  const SB = rb ? summarize(rb, nowMs, KEY || 'this') : null;
+  const P = SA ? SA.p : SB ? SB.p : periodFor(KEY || 'this', nowMs, logStart);
+  $('#period-title').textContent = P.title;
+  $('#from').value = toIso(P.main.start); $('#to').value = toIso(Math.min(P.main.end, P.today.end) - 1);
+  $('#morning').textContent = SA && SA.morning ? SA.morning : '';
+  LAST = { SA, SB };
+  renderMeta(SA, SB); renderNotices(SA, SB);
+
+  const A = partA(SA), B = partB(SB, rb);
+  let h = panel('overview', overview(SA, SB));
+  h += panel('all-channels', A);
+  h += panel('bot', B);
+
+  let d = pageHead('How to read this report', 'Every number on this page uses these words. Nothing here is a score for any one person.') +
+    '<div class="cols c11"><section class="card">' + cardHead('The two sources') + '<ul class="oc">' +
+    '<li>' + key('wa') + '<span class="oc-name">' + SRC_A + '</span><span></span><span class="oc-c">All channels (WhatsApp, Instagram, TikTok). Counts customers once a day and who replied to them. Filled every morning for yesterday.</span></li>' +
+    '<li>' + key('ok') + '<span class="oc-name">' + SRC_B + '</span><span></span><span class="oc-c">WhatsApp only. One row per chat with the FAQ menu: what the customer picked and how the chat ended. Instagram and TikTok have no FAQ menu.</span></li></ul>' +
+    '<p class="foot">They measure different things, so no number on this page adds or divides one by the other.</p></section>' +
+    '<section class="card">' + cardHead('How numbers are written') + '<ul class="oc">' +
+    '<li><span></span><span class="oc-name">154 (28%)</span><span></span><span class="oc-c">The number first, then its share in brackets. The card or column title says what the share is out of.</span></li>' +
+    '<li><span></span><span class="oc-name">Fewer than ' + CFG.SMALL_TOTAL + '</span><span></span><span class="oc-c">With so few, only the number is shown. A percentage would mislead.</span></li>' +
+    '<li><span></span><span class="oc-name">Compared with</span><span></span><span class="oc-c">A month is compared with the month before. Other periods are compared with the same number of days just before.</span></li></ul></section></div>' +
+    '<section class="card">' + cardHead('What the words mean') + '<div class="tw"><table class="defs"><thead><tr><th>Term</th><th>What it means</th><th class="hide-sm">Also called</th></tr></thead><tbody>' +
+    DEFS.map(r => '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td><td class="muted hide-sm">' + esc(r[3]) + '</td></tr>').join('') + '</tbody></table></div>' +
+    '<details class="more-info"><summary>For the person who fills in the sheets: which column each term comes from</summary><div class="tw"><table class="defs"><thead><tr><th>Term</th><th>Column in the sheet</th></tr></thead><tbody>' +
+    DEFS.map(r => '<tr><td>' + esc(r[0]) + '</td><td class="muted">' + esc(r[2]) + '</td></tr>').join('') + '</tbody></table></div></details></section>';
+  const notes = [
+    'Human assistance is often on purpose, for example refunds, damaged items or orders that could not be found. It is not a failure.',
+    'This page does not score staff. Reply times include nights and weekends.',
+    'Only counts, topics, outcomes and times are stored. No names, phone numbers or messages.',
   ];
-  const chans = Object.keys(m.channels); if (chans.length > 1) notes.push('By channel: ' + chans.map(k => k + ' ' + m.channels[k]).join(', ') + '.');
-  if (st.test) notes.push('Test chats not counted: ' + st.test + '.');
-  if (st.unreadable) notes.push(st.unreadable + ' chat(s) had a date that couldn\'t be read and aren\'t counted. Please tell ' + CFG.ADMIN_NAME + '.');
-  if (st.duplicates) notes.push(st.duplicates + ' repeated row(s) ignored.');
-  notes.push('Source: SleekFlow Tracker (Google Sheet), ' + READ.chats.length + ' chats in total. Updates every ' + CFG.REFRESH_MINUTES + ' minutes.');
-  h += '<section class="notes"><h2>Notes</h2><ul>' + notes.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></section>';
+  if (SA && SA.main.incomplete.length) notes.push('Daily Log days left out of the shares and the reply time, because a number is missing or the parts do not add up: ' + SA.main.incomplete.map(x => dayText(x.ms)).join(', ') + '.');
+  if (rd && rd.unreadable) notes.push(rd.unreadable + ' Daily Log row(s) had a date that could not be read and are not counted. Please tell ' + CFG.ADMIN_NAME + '.');
+  if (rb) {
+    const st = rb.stats; const chans = SB ? Object.keys(SB.main.channels) : [];
+    if (chans.length > 1) notes.push('WhatsApp FAQ chats by channel: ' + chans.map(k => k + ' ' + SB.main.channels[k]).join(', ') + '.');
+    if (st.test) notes.push('Test chats not counted: ' + st.test + '.');
+    if (st.unreadable) notes.push(st.unreadable + ' chat(s) had a date that could not be read and are not counted. Please tell ' + CFG.ADMIN_NAME + '.');
+    if (st.duplicates) notes.push(st.duplicates + ' repeated row(s) ignored.');
+  }
+  notes.push('Based on ' + (rd ? rd.days.length + ' days of the ' + SRC_A : 'the ' + SRC_A) + ' and ' + (rb ? num(rb.chats.length) + ' chats of the ' + SRC_B : 'the ' + SRC_B) + ', both kept in Google Sheets. The page checks for new numbers every ' + CFG.REFRESH_MINUTES + ' minutes.');
+  d += '<section class="card notes">' + cardHead('Notes') + '<ul>' + notes.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></section>';
+  h += panel('definitions', d);
 
   $('#app').innerHTML = h;
-  drawChart(S, quiet);
+  setTab(TAB);
+  drawChart(SA, quiet);
 }
 
-function drawChart(S, quiet) {
-  if (CHART) { CHART.destroy(); CHART = null; }
-  const el = document.getElementById('cTime'); if (!el) return;
-  if (!window.Chart) { el.parentElement.style.display = 'none'; $('#nochart').textContent = 'The chart couldn\'t load. The tables are still correct.'; return; }
-  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily; Chart.defaults.color = css('--muted');
-  CHART = new Chart(el, {
+// ------------------------------------------------------------ Overview
+function overview(SA, SB) {
+  const okA = !!(SA && SA.main.days), okB = !!(SB && SB.main.chats);
+  const cmpA = SA ? esc(SA.p.compareText) : '', cmpB = SB ? esc(SB.p.compareText) : '';
+  const notA = SA ? 'No days in this period.' : ERR_A ? 'The ' + SRC_A + ' could not be loaded.' : READ_A ? 'No Daily Log days yet.' : 'Loading…';
+  const notB = SB ? 'No chats in this period.' : ERR_B ? 'The ' + SRC_B + ' could not be loaded.' : 'Loading…';
+
+  // 1. Four numbers
+  let k1;
+  if (okA) {
+    const m = SA.main, c = SA.cmp, a = Math.round(m.perDay);
+    const cmp = SA.covered && c.perDay !== null ? cmpA + ': ' + num(c.enq) + ' (' + Math.round(c.perDay) + ' a day)' : '';
+    k1 = kpi({ label: 'Total enquiries', src: TAG_A, value: num(m.enq), sub: num(a) + ' a day', cmp });
+  } else k1 = kpi({ label: 'Total enquiries', src: TAG_A, value: '–', sub: notA });
+
+  let k2, k3, k4;
+  if (okB) {
+    const m = SB.main, c = SB.compare, r = SB.topicRows[0];
+    k2 = r ? kpi({ label: 'Top customer issue', src: TAG_B, value: esc(r.name), txt: true, sub: npText(r.chats, m.chats) + ' chats', cmp: SB.canCompare ? (r.isNew ? 'New this period' : cmpB + ': ' + num(r.compare) + ' chats') : '' })
+      : kpi({ label: 'Top customer issue', src: TAG_B, value: '–', sub: 'No topics chosen yet' });
+    k3 = kpi({ label: 'Human assistance', src: TAG_B, value: share(m.HUMAN, m.chats), sub: ofChats(m.HUMAN, m.chats), cmp: SB.canCompare && c.chats ? cmpB + ': ' + ofChats(c.HUMAN, c.chats) : '' });
+    let cmp4 = '';
+    if (SA && SA.weekday && SA.weekday.busiest) cmp4 = 'Busiest day: ' + SA.weekday.busiest.day + 's';
+    else if (SB.busiestHandedHour !== null) cmp4 = 'Human assistance busiest: ' + hourShort(SB.busiestHandedHour);
+    k4 = SB.busiestHour !== null ? kpi({ label: 'Busiest time', src: TAG_B, value: hourShort(SB.busiestHour), txt: true, sub: 'Most chats start then', cmp: cmp4 })
+      : kpi({ label: 'Busiest time', src: TAG_B, value: '–', sub: 'Needs about ' + CFG.BUSIEST_MIN_CHATS + ' chats to tell', cmp: cmp4 });
+  } else {
+    k2 = kpi({ label: 'Top customer issue', src: TAG_B, value: '–', sub: notB });
+    k3 = kpi({ label: 'Human assistance', src: TAG_B, value: '–', sub: notB });
+    k4 = kpi({ label: 'Busiest time', src: TAG_B, value: '–', sub: notB });
+  }
+
+  // 2. Anything unusual
+  const al = (SA ? SA.alerts : []).concat(SB ? SB.alerts : []);
+  let strip = '';
+  if (al.length) strip = '<div class="status warn" role="status"><span class="ico" aria-hidden="true">!</span><div><p class="st-h">Things to check</p><ul>' + al.slice(0, 3).map(a => '<li>' + esc(a.text) + '</li>').join('') + '</ul>' + (al.length > 3 ? '<p class="src">+ ' + (al.length - 3) + ' more in the other tabs</p>' : '') + '</div></div>';
+  else if (okA || okB) strip = '<div class="status ok" role="status"><span class="ico" aria-hidden="true">✓</span><p class="st-h">Nothing unusual detected.</p></div>';
+
+  // 3. What customers ask about, and the common concerns
+  const srcB = okB ? TAG_B + ' · ' + num(SB.main.chats) + ' chats' : TAG_B;
+  let ask;
+  if (!SB || !SB.topicRows.length) ask = msg('What customers ask about', notB);
+  else {
+    const m = SB.main; const small = m.chats < CFG.SMALL_TOTAL;
+    ask = '<section class="card">' + cardHead('What customers ask about', srcB, ['bot', 'All topics']) + takeaway(SB) +
+      rankBars(SB.topicRows.map(r => ({ name: r.name, n: r.chats, p: small ? '' : pct(r.chats, m.chats), vs: SB.canCompare ? (r.isNew ? 'new' : 'was ' + num(r.compare)) : '' }))) +
+      (small ? '<p class="foot">Only ' + m.chats + ' chat' + (m.chats === 1 ? '' : 's') + ' in this period, so no percentages.</p>' : '<p class="def">Share of all chats. A chat can pick more than one topic, so the shares add up to more than 100%.' + (SB.canCompare ? ' "was" = ' + cmpB + '.' : '') + '</p>') + '</section>';
+  }
+  let concerns;
+  if (!okB) concerns = msg('Common concerns', notB);
+  else {
+    const rows = SB.concernRows.map(r => ({ r, d: CFG.DETAILS.find(x => x.label === r.label) }))
+      .filter(x => x.d && !x.d.systemError && NOT_A_CONCERN.indexOf(x.r.label) === -1).slice(0, 5)
+      .map(x => ({ name: x.r.label, sub: x.d.topic, n: x.r.chats }));
+    concerns = '<section class="card">' + cardHead('Common concerns', TAG_B + ' · what customers picked inside a topic', ['bot', 'All sub-topics']) +
+      (rows.length ? rankBars(rows, { narrow: true }) : '<p class="muted">No concerns recorded in this period.</p>') + '</section>';
+  }
+
+  // 4. Enquiries over time, and by channel
+  let time, chans;
+  if (!okA) { time = msg('Enquiries over time', notA); chans = msg('Enquiries by channel', notA); }
+  else {
+    const m = SA.main; const tot = m.wa + m.ig + m.tt + m.em;
+    time = '<section class="card">' + cardHead('Enquiries over time', TAG_A + ' · all channels · per ' + SA.unit, ['all-channels', 'Full detail']) + timeChart(SA, 'cTimeOv') + timeFacts(SA) + '</section>';
+    const last = SA.mainList[SA.mainList.length - 1];
+    chans = '<section class="card">' + cardHead('Enquiries by channel', TAG_A + ' · ' + num(tot) + ' enquiries', ['all-channels', 'Detail']) +
+      rankBars(activeChannels(SA).map(c => ({ name: c[0], sub: Math.round(m[c[1]] / m.days) + ' a day', n: m[c[1]], p: pct(m[c[1]], tot), c: c[1] }))) +
+      (last ? '<div class="reply"><p class="main">Latest day (' + esc(dayText(last.ms)) + '): <b>' + num(last.total) + '</b> enquiries</p><div class="legend">' + activeChannels(SA).map(c => '<span><i style="background:var(--' + c[1] + ')"></i>' + c[0] + ' <b>' + num(last[c[1]]) + '</b></span>').join('') + '</div></div>' : '') +
+      '<p class="def">Instagram and TikTok have no FAQ menu, only automatic replies.</p></section>';
+  }
+
+  // 5. How chats ended, who replied
+  let ended;
+  if (!okB) ended = msg('How WhatsApp FAQ chats ended', notB);
+  else {
+    const m = SB.main; const ks = ['BOT', 'HUMAN', 'QUIET', 'UNKNOWN'].filter(k => k !== 'UNKNOWN' || m.UNKNOWN);
+    ended = '<section class="card">' + cardHead('How WhatsApp FAQ chats ended', srcB, ['bot', 'Detail'], '(WhatsApp only: each chat with the FAQ menu, and how it finished)') + splitBar(ks.map(k => [OUTCOME_COLOUR[k], m[k], WORD[k]]), m.chats, 'How chats ended') +
+      '<ul class="oc">' + ks.map(k => '<li>' + key(OUTCOME_COLOUR[k]) + '<span class="oc-name">' + WORD[k] + '</span><span class="oc-v">' + share(m[k], m.chats) + '</span><span class="oc-c">' + ofChats(m[k], m.chats) + '</span></li>').join('') + '</ul></section>';
+  }
+  let replied;
+  if (!okA) replied = msg('Who replied to enquiries', notA);
+  else {
+    const m = SA.main; const rows = [['ok', m.bot, 'Bot or auto-reply only'], ['person', m.staff, 'Answered by staff'], ['quiet', m.none, 'No reply from us (same day)']];
+    replied = '<section class="card">' + cardHead('Who replied to enquiries', TAG_A, ['all-channels', 'Detail'], '(All channels: every customer on WhatsApp, Instagram and TikTok, and who answered them that day)') + (m.who ? splitBar(rows, m.who, 'Who replied') : '') +
+      '<ul class="oc">' + rows.map(x => '<li>' + key(x[0]) + '<span class="oc-name">' + x[2] + '</span><span class="oc-v">' + (m.who ? pct(x[1], m.who) : '–') + '</span><span class="oc-c">' + num(x[1]) + ' of ' + num(m.who) + ' enquiries</span></li>').join('') + '</ul>' +
+      (m.reply && m.reply.n >= 3 ? '<div class="reply"><p class="main">Staff reply time: <b>' + m.reply.mid + ' min</b> <span class="muted">(typical day)</span></p></div>' : '') + '</section>';
+  }
+
+  return '<div class="kpis">' + k1 + k2 + k3 + k4 + '</div>' + strip + '<div class="cols c32">' + ask + concerns + '</div>' + '<div class="cols c21">' + time + chans + '</div>' + '<div class="cols c11">' + ended + replied + '</div>';
+}
+
+// ------------------------------------------------------------ Daily Log (SleekFlow data)
+function partA(SA) {
+  const up = READ_A && READ_A.lastMs !== null ? ' · filled up to ' + dayText(READ_A.lastMs) + ' ' + wall(READ_A.lastMs).y : '';
+  const head = pageHead(SRC_A, 'All channels: every customer who messaged us on WhatsApp, Instagram or TikTok, counted once a day, and who replied to them.', TAG_A + up);
+  if (!SA) return head + msg('Summary', ERR_A ? 'The ' + SRC_A + ' could not be loaded. The ' + SRC_B + ' is still correct.' : READ_A ? 'No Daily Log days yet.' : 'Loading the Daily Log…');
+  const m = SA.main, c = SA.cmp;
+  if (!m.days) return head + msg('Summary', 'No Daily Log days in this period. It started on ' + esc(dayText(READ_A.firstMs)) + ' ' + wall(READ_A.firstMs).y + ' and is filled up to ' + esc(dayText(READ_A.lastMs)) + ' ' + wall(READ_A.lastMs).y + '.');
+  const src = TAG_A + up;
+  const wasShare = cn => (SA.shareOk && c.who ? esc(SA.p.compareText) + ': ' + npText(cn, c.who) : '');
+
+  // Summary
+  const three = [
+    ['ok', m.bot, 'Bot or auto-reply only', 'No staff reply that day. Not proof it was solved.', c.bot],
+    ['person', m.staff, 'Answered by staff', 'A staff member replied at least once.', c.staff],
+    ['quiet', m.none, 'No reply from us (same day)', 'Nobody on our side replied that day.', c.none],
+  ];
+  let s1 = '<section class="card">' + cardHead('Summary', src);
+  s1 += '<div class="kpis">' + kpi({ label: 'Total enquiries', value: num(m.enq), sub: num(Math.round(m.perDay)) + ' a day', cmp: SA.covered && c.perDay !== null ? esc(SA.p.compareText) + ': ' + num(c.enq) + ' (' + Math.round(c.perDay) + ' a day)' : '', def: 'Customers who messaged us. One customer, one channel, one day = 1.' }) +
+    three.map(x => kpi({ label: x[2], dot: x[0], value: m.who ? pct(x[1], m.who) : '–', sub: num(x[1]) + ' of ' + num(m.who), cmp: wasShare(x[4]), def: x[3] })).join('') + '</div>';
+  if (m.who) s1 += splitBar(three, m.who, 'Who replied');
+  if (m.reply && m.reply.n >= 3) s1 += '<div class="reply"><p class="main">Staff reply time: <b>' + m.reply.mid + ' min</b> <span class="muted">(typical day; half of days between ' + m.reply.lo + ' and ' + m.reply.hi + ' min)</span></p><p class="def">Clock time, nights and weekends included, same-day replies only. It shows how long customers wait, not any one person\'s speed.</p></div>';
+  else s1 += '<p class="foot">Staff reply time: not enough days with staff replies in this period yet.</p>';
+  if (m.completeDays < m.days) s1 += '<p class="foot">Shares and reply time use ' + m.completeDays + ' of ' + m.days + ' days. ' + esc(joinAnd(m.incomplete.map(x => dayText(x.ms)))) + ' ' + (m.incomplete.length === 1 ? 'is' : 'are') + ' incomplete in the sheet.</p>';
+  s1 += '</section>';
+
+  // By channel
+  const chRows = activeChannels(SA);
+  const chTotal = m.wa + m.ig + m.tt + m.em;
+  const vs = k => { if (!SA.covered || c.perDay === null) return '–'; const x = Math.round(m[k] / m.days), y = Math.round(c[k] / c.days); return y + ' a day' + (x === y ? '' : '<span class="chg">' + (x > y ? '▲ ' : '▼ ') + Math.abs(x - y) + '</span>'); };
+  const maxCh = Math.max(1, ...chRows.map(r => m[r[1]]));
+  const s2 = '<section class="card">' + cardHead('Enquiries by channel', src) + '<div class="tw"><table class="topics"><thead><tr><th>Channel</th><th class="num">Enquiries</th><th class="hide-sm"><span class="sr">Bar</span></th><th class="num">A day</th>' + (SA.covered ? '<th class="num hide-sm">' + esc(SA.p.compareText) + '</th>' : '') + '</tr></thead><tbody>' +
+    chRows.map(r => '<tr><td><span class="lab-c">' + key(r[1]) + ' <b>' + r[0] + '</b></span></td><td class="num"><b>' + np(m[r[1]], chTotal) + '</b></td><td class="barcell hide-sm"><div class="bar" style="width:' + (100 * m[r[1]] / maxCh) + '%;background:var(--' + r[1] + ')"></div></td><td class="num">' + Math.round(m[r[1]] / m.days) + '</td>' + (SA.covered ? '<td class="num muted hide-sm">' + vs(r[1]) + '</td>' : '') + '</tr>').join('') + '</tbody></table></div>' +
+    '<p class="foot">Bot or auto-reply only rises and falls with Instagram\'s share, so read the two together. Instagram and TikTok have no FAQ menu, only automatic replies.</p></section>';
+
+  // Over time
+  let s3 = '<section class="card">' + cardHead('Enquiries over time', src + ' · per ' + SA.unit) + timeChart(SA, 'cTime') + timeFacts(SA);
+  if (SA.months.length) s3 += '<h4 class="subh">Month by month</h4><div class="tw"><table><thead><tr><th>Month</th><th class="num">Enquiries</th><th class="num">A day</th><th class="num">Bot or auto-reply only</th><th class="num">Answered by staff</th><th class="num">No reply from us</th><th class="num">Staff reply time</th></tr></thead><tbody>' +
+    SA.months.map(r => '<tr><td><b>' + esc(monthLabel(r.label)) + '</b></td><td class="num"><b>' + num(r.enq) + '</b></td><td class="num">' + Math.round(r.perDay) + '</td><td class="num">' + np(r.bot, r.who) + '</td><td class="num">' + np(r.staff, r.who) + '</td><td class="num">' + np(r.none, r.who) + '</td><td class="num">' + (r.reply && r.reply.n >= 3 ? r.reply.mid + ' min' : '–') + '</td></tr>').join('') + '</tbody></table></div>' +
+    '<p class="def">Shares are out of the enquiries on complete days. The current month counts the days filled so far.</p>';
+  s3 += '</section>';
+  return head + alertBox(SA.alerts) + s1 + s3 + s2;
+}
+
+// ------------------------------------------------------------ WhatsApp FAQ customer data
+/** Chats per day (or week) by ending, per hour, per weekday and per month. Display only: re-groups the chats the logic block already read, and every total is checked against SB.main in the test script. */
+function botViz(SB, rb) {
+  const p = SB.p, m = SB.main;
+  const start = rb.logStartMs !== null ? Math.max(p.main.start, dayStart(rb.logStartMs)) : p.main.start;
+  const end = Math.min(p.main.end, p.today.end);
+  const inR = rb.chats.filter(c => c.ms >= start && c.ms < end);
+  const unit = end - start <= 62 * DAY ? 'day' : 'week'; const step = unit === 'day' ? DAY : 7 * DAY;
+  const day = [];
+  for (let t = start; t < end; t += step) day.push({ start: t, end: Math.min(t + step, end), label: dayText(t), partial: unit === 'week' && t + step > end, BOT: 0, HUMAN: 0, QUIET: 0, UNKNOWN: 0 });
+  inR.forEach(c => { const b = day[Math.floor((c.ms - start) / step)]; if (b) b[c.outcome]++; });
+  const hour = Array.from({ length: 24 }, () => ({ all: 0, human: 0 }));
+  inR.forEach(c => { const h = hour[wall(c.ms).h]; h.all++; if (c.outcome === 'HUMAN') h.human++; });
+  // weekday averages use whole days only (today is not finished), and only when every weekday occurs often enough
+  const fullEnd = Math.min(end, p.today.start); const occ = [0, 0, 0, 0, 0, 0, 0];
+  for (let t = start; t < fullEnd; t += DAY) occ[wall(t).dow]++;
+  const wd = Array.from({ length: 7 }, () => ({ all: 0, human: 0 }));
+  rb.chats.filter(c => c.ms >= start && c.ms < fullEnd).forEach(c => { const w = wd[wall(c.ms).dow]; w.all++; if (c.outcome === 'HUMAN') w.human++; });
+  const wdOk = occ.every(n => n >= CFG.WEEKDAY_MIN_EACH);
+  const order = [1, 2, 3, 4, 5, 6, 0];
+  return {
+    day, unit, hour, hourOk: m.chats >= CFG.BUSIEST_MIN_CHATS, hourHuman: m.HUMAN >= CFG.BUSIEST_HANDED_MIN,
+    wd: { ok: wdOk, labels: order.map(d => DAYS[d].slice(0, 3)), all: order.map(d => (occ[d] ? wd[d].all / occ[d] : 0)), human: order.map(d => (occ[d] ? wd[d].human / occ[d] : 0)) },
+    months: SB.months.map(r => ({ label: monthLabel(r.label), BOT: r.BOT, HUMAN: r.HUMAN, QUIET: r.QUIET, UNKNOWN: r.chats - r.BOT - r.HUMAN - r.QUIET })),
+  };
+}
+let BOTVIZ = null;
+
+/** The two cards: topics (with sub-topics) in chats completed by the bot, and in chats that needed a person.
+    Bot counts every topic the chat picked. Human counts only the topic the customer was on at the end (the logic block's rule), so its shares add up to 100%. */
+function sideData(SB, rb) {
+  const m = SB.main; const bots = subBotCounts(rb, SB.p.main);
+  const side = (n, noTopic) => ({ total: n, noTopic, rows: [] });
+  const out = { bot: side(m.BOT, bots.noTopicBot), human: side(m.HUMAN, m.noTopicHuman) };
+  SB.topicRows.forEach(r => {
+    const o = SB.res[r.name] || { resolved: 0, handed: 0, chats: 0 }; const st = SB.sub.tables[r.name]; const bt = bots.tables[r.name] || { subs: {}, noSub: 0 };
+    const complete = !!st && st.base >= o.chats;
+    const subsOf = (counts, noSub) => { const a = Object.keys(counts).map(l => ({ name: l, n: counts[l] })).filter(s => s.n > 0).sort((x, y) => y.n - x.n || x.name.localeCompare(y.name)); if (a.length && noSub) a.push({ name: 'No sub-topic chosen', n: noSub }); return a; };
+    if (o.resolved > 0) out.bot.rows.push({ name: r.name, n: o.resolved, subs: st ? subsOf(bt.subs, bt.noSub) : [], complete });
+    if (o.handed > 0) out.human.rows.push({ name: r.name, n: o.handed, subs: st ? subsOf(st.handed, st.noSubHanded) : [], complete });
+  });
+  ['bot', 'human'].forEach(k => out[k].rows.sort((a, b) => b.n - a.n || topicOrder(a.name) - topicOrder(b.name)));
+  return out;
+}
+
+function sideCard(kind, S, max, SB) {
+  const bot = kind === 'bot'; const colour = bot ? 'ok' : 'person'; const total = S.total; const m = SB.main;
+  const title = bot ? WORD.BOT : WORD.HUMAN;
+  const note = bot ? '(What customers picked in chats where the bot finished the job. Share = out of these ' + num(total) + ' chats. A chat can pick several topics, so the shares add up to more than 100%.)'
+    : '(What customers picked in chats that needed a person. A chat is counted under the topic the customer was on when it was passed on, so the shares add up to 100%.)';
+  let h = '<section class="card side side-' + kind + '"><div class="card-h"><div><h3>' + key(colour) + ' ' + title + ': what customers picked</h3><p class="note">' + note + '</p><p class="src">' + esc(TAG_B) + '</p></div>' +
+    '<p class="side-total"><b>' + num(total) + '</b> chats<span class="pc"> ' + (m.chats < CFG.SMALL_TOTAL ? '' : '(' + pct(total, m.chats) + ' of all)') + '</span></p></div>';
+  if (!total) return h + '<p class="muted">None in this period.</p></section>';
+  let body = '';
+  S.rows.forEach((r, i) => {
+    const has = r.subs.length > 0; const open = has && OPEN.has(r.name); const ids = r.subs.map((_, j) => 'sd-' + kind + '-' + i + '-' + j);
+    const name = has
+      ? '<button type="button" class="tgl" aria-expanded="' + open + '" aria-controls="' + ids.join(' ') + '" data-topic="' + esc(r.name) + '"><span class="chev">' + CHEV + '</span><span>' + esc(r.name) + ' <span class="hint">' + r.subs.length + ' sub-topic' + (r.subs.length === 1 ? '' : 's') + '</span></span></button>'
+      : '<span class="plain">' + esc(r.name) + '</span>';
+    body += '<tbody class="grp' + (open ? ' open' : '') + '" data-topic="' + esc(r.name) + '"><tr class="top"><td>' + name + '</td><td class="barcell hide-sm"><div class="bar" style="width:' + (100 * r.n / max) + '%;background:var(--' + colour + ')"></div></td><td class="num">' + np(r.n, total) + '</td></tr>';
+    const cl = (inner, cls) => '<td' + (cls ? ' class="' + cls + '"' : '') + '><div class="cl"><div><div class="p">' + inner + '</div></div></div></td>';
+    r.subs.forEach((s, j) => {
+      body += '<tr class="sub' + (j === r.subs.length - 1 ? ' last' : '') + '" id="' + ids[j] + '">' + cl('<span class="tree">' + esc(s.name) + '</span>', '') +
+        cl('<div class="bar" style="width:' + (100 * s.n / max) + '%;background:var(--' + colour + ');opacity:.55"></div>', 'barcell hide-sm') + cl(r.complete ? np(s.n, r.n) : num(s.n), 'num') + '</tr>';
+    });
+    body += '</tbody>';
+  });
+  if (S.noTopic) body += '<tbody class="grp"><tr class="top"><td class="muted"><span class="plain">No topic chosen</span></td><td class="barcell hide-sm"><div class="bar" style="opacity:.4;width:' + (100 * S.noTopic / max) + '%;background:var(--' + colour + ')"></div></td><td class="num">' + np(S.noTopic, total) + '</td></tr></tbody>';
+  h += '<div class="tw"><table class="topics side-t"><thead><tr><th>Topic</th><th class="hide-sm"><span class="sr">Bar</span></th><th class="num">Chats (share of ' + num(total) + ')</th></tr></thead>' + body + '</table></div>';
+  h += '<p class="def">Click a topic to see the sub-topics inside it. A sub-topic share is out of its topic' + (S.rows.some(r => !r.complete && r.subs.length) ? '; where sub-topics were only recorded from a later date, only the number is shown' : '') + '.</p></section>';
+  return h;
+}
+
+function partB(SB, rb) {
+  const head = pageHead(SRC_B, 'WhatsApp only: each chat with the FAQ menu, what the customer picked, and how the chat ended. Counts chats, not customers. Instagram and TikTok have no FAQ menu.', SB ? TAG_B + ' · ' + num(SB.main.chats) + ' chats in this period' : '');
+  BOTVIZ = null;
+  if (!SB) return head + msg('How chats ended', ERR_B ? 'The ' + SRC_B + ' could not be loaded. The ' + SRC_A + ' is still correct.' : 'Loading…');
+  const m = SB.main, c = SB.compare;
+  const src = TAG_B + ' · ' + num(m.chats) + ' chats in this period';
+  const small = m.chats < CFG.SMALL_TOTAL;
+  const smallNote = small ? '<p class="foot">Only ' + m.chats + ' chat' + (m.chats === 1 ? '' : 's') + ' in this period, so no percentages.</p>' : '';
+  const cmpName = isMonthKey(SB.p.key) ? 'Last month' : 'Before';
+
+  // How chats ended
+  let s4 = '<section class="card">' + cardHead('How chats ended', src);
+  if (!m.chats) {
+    s4 += '<p class="muted">No chats in this period. Chats have been recorded since ' + esc(dayText(rb.logStartMs)) + ' ' + wall(rb.logStartMs).y + '.</p></section>';
+    return head + alertBox(SB.alerts) + s4;
+  }
+  BOTVIZ = botViz(SB, rb);
+  s4 += smallNote;
+  s4 += '<div class="kpis">' +
+    kpi({ label: 'Total chats', value: num(m.chats), sub: 'One WhatsApp conversation with the FAQ menu.', cmp: SB.canCompare ? esc(SB.p.compareText) + ': ' + num(c.chats) + ' chats' : '' }) +
+    kpi({ label: WORD.BOT, dot: 'ok', value: share(m.BOT, m.chats), sub: ofChats(m.BOT, m.chats), cmp: SB.canCompare && c.chats ? esc(SB.p.compareText) + ': ' + ofChats(c.BOT, c.chats) : '', def: 'The customer finished with "Nope, that\'s all".' }) +
+    kpi({ label: WORD.HUMAN, dot: 'person', value: share(m.HUMAN, m.chats), sub: ofChats(m.HUMAN, m.chats), cmp: SB.canCompare && c.chats ? esc(SB.p.compareText) + ': ' + ofChats(c.HUMAN, c.chats) : '', def: 'Passed to a person. Often on purpose, not a failure.' }) +
+    kpi({ label: WORD.QUIET, dot: 'quiet', value: share(m.QUIET, m.chats), sub: ofChats(m.QUIET, m.chats), cmp: SB.canCompare && c.chats ? esc(SB.p.compareText) + ': ' + ofChats(c.QUIET, c.chats) : '', def: 'The customer went quiet and the chat was closed after one reminder.' }) + '</div>';
+  s4 += splitBar(['BOT', 'HUMAN', 'QUIET', 'UNKNOWN'].filter(k => m[k]).map(k => [OUTCOME_COLOUR[k], m[k], WORD[k]]), m.chats, 'How chats ended');
+  if (m.UNKNOWN) s4 += '<p class="foot">' + m.UNKNOWN + ' chat(s) have an ending the page does not recognise. Please tell ' + esc(CFG.ADMIN_NAME) + '.</p>';
+  s4 += '</section>';
+
+  const endLegend = legend([{ c: 'ok', t: WORD.BOT }, { c: 'person', t: WORD.HUMAN }, { c: 'quiet', t: WORD.QUIET }].concat(m.UNKNOWN ? [{ c: 'unknown', t: WORD.UNKNOWN }] : []));
+  const bchart = (kind, id) => '<div class="chart"><canvas class="js-bot" data-kind="' + kind + '" id="' + id + '" role="img" aria-label="' + kind + ' chart"></canvas></div>';
+
+  // Chats per day
+  const sDay = '<section class="card">' + cardHead('Chats per ' + BOTVIZ.unit + ', by how they ended', src) + endLegend + bchart('day', 'cBotDay') +
+    '<p class="def">WhatsApp FAQ chats only, so these bars are not the same as the all-channel enquiries on the Daily Log tab. A quiet day can also mean nothing was recorded.</p></section>';
+
+  // The two cards
+  const SD = sideData(SB, rb); const max = Math.max(1, ...SD.bot.rows.map(r => r.n), ...SD.human.rows.map(r => r.n), SD.bot.noTopic, SD.human.noTopic);
+  const anySub = SD.bot.rows.concat(SD.human.rows).some(r => r.subs.length);
+  const sCards = (anySub ? '<div class="tblctl noprint"><button type="button" class="lnk" data-act="expand">Expand all</button><button type="button" class="lnk" data-act="collapse">Collapse all</button><span class="src">Both cards open together. The bars use the same scale, so you can compare them.</span></div>' : '') +
+    '<div class="cols c11">' + sideCard('bot', SD.bot, max, SB) + sideCard('human', SD.human, max, SB) + '</div>';
+
+  // When customers message
+  const hourFacts = [SB.busiestHour !== null ? 'Busiest time for chats: <b>' + hourText(SB.busiestHour) + '</b>' : '', SB.busiestHandedHour !== null ? 'Human assistance busiest: <b>' + hourText(SB.busiestHandedHour) + '</b>' : ''].filter(Boolean);
+  const hourCard = '<section class="card">' + cardHead('When customers message', src + ' · hour of the day, Malaysia time') +
+    (BOTVIZ.hourOk ? bchart('hour', 'cBotHour') + (hourFacts.length ? '<div class="facts">' + hourFacts.map(x => '<span class="fact">' + x + '</span>').join('') + '</div>' : '') +
+      '<p class="def">Shows when people ask, not how many staff you need. The hour is the time recorded for the chat.</p>' : '<p class="muted">Shows once there are about ' + CFG.BUSIEST_MIN_CHATS + ' chats in the period.</p>') + '</section>';
+  const wdCard = '<section class="card">' + cardHead('Average chats per day, by weekday', src) +
+    (BOTVIZ.wd.ok ? bchart('wd', 'cBotWd') + '<p class="def">Whole days only. Special days such as a sale or a launch can lift a weekday.</p>' : '<p class="muted">Shows for periods of about 4 weeks or more.</p>') + '</section>';
+  const sWhen = '<div class="cols c11">' + hourCard + wdCard + '</div>';
+
+  // Topics and sub-topics: the full table. Every row reads the same way: its own chats, then how those chats ended (adds up to 100% of the row).
+  let s5 = '<section class="card">' + cardHead('All topics in one table', src, null, '(How to read it: each row is one topic or sub-topic. Chats = how many chats picked it. The three numbers after it show how those chats ended, as a share of that row\'s own chats, so every row adds up to 100%.)');
+  EXPANDABLE = [];
+  if (!SB.topicRows.length && !m.noTopic) {
+    s5 += '<p class="muted">No topics picked in this period.</p></section>';
+  } else {
+    s5 += smallNote;
+    const cmp = SB.canCompare;
+    const bots = subBotCounts(rb, SB.p.main);
+    const always = (n, t) => (n === t && t >= CFG.SMALL_TOTAL ? '<span class="tag">always needs a person</span>' : '');
+    const cl = (inner, cls) => '<td' + (cls ? ' class="' + cls + '"' : '') + '><div class="cl"><div><div class="p">' + inner + '</div></div></div></td>';
+    const before = (now, was, isNew) => (isNew ? 'new' : num(was) + (now === was ? '' : '<span class="chg">' + (now > was ? '▲ ' : '▼ ') + Math.abs(now - was) + '</span>'));
+    /** The three endings of one row: completed by bot, human assistance, and the rest (stopped replying, or went on to another topic). */
+    const ends = (n, b, hu) => {
+      const o = Math.max(0, n - b - hu);
+      return { bar: '<div class="endbar" role="img" aria-label="' + esc(WORD.BOT + ' ' + b + ', ' + WORD.HUMAN + ' ' + hu + ', rest ' + o) + '">' + [['ok', b], ['person', hu], ['quiet', o]].filter(x => x[1]).map(x => '<span style="flex:' + x[1] + ' 1 0;background:var(--' + x[0] + ')"></span>').join('') + '</div>', b: np(b, n), h: np(hu, n), o: np(o, n) };
+    };
+    let body = '';
+    SB.topicRows.forEach((r, i) => {
+      const o = SB.res[r.name] || { resolved: 0, handed: 0 }; const st = SB.sub.tables[r.name]; const bt = bots.tables[r.name] || { subs: {}, noSub: 0 };
+      const subs = st ? Object.keys(st.subs).sort((a, b) => st.subs[b] - st.subs[a] || a.localeCompare(b)) : [];
+      const rows = subs.map(l => ({ name: l, n: st.subs[l], b: bt.subs[l] || 0, h: st.handed[l] || 0 }));
+      if (subs.length && st.noSub) rows.push({ name: 'No sub-topic chosen', n: st.noSub, b: bt.noSub, h: st.noSubHanded });
+      const has = subs.length > 0; const open = has && OPEN.has(r.name);
+      if (has) EXPANDABLE.push(r.name);
+      const ids = rows.map((_, j) => 'tb-' + i + '-' + j);
+      const name = has
+        ? '<button type="button" class="tgl" aria-expanded="' + open + '" aria-controls="' + ids.join(' ') + '" data-topic="' + esc(r.name) + '"><span class="chev">' + CHEV + '</span><span>' + esc(r.name) + ' <span class="hint">' + subs.length + ' sub-topic' + (subs.length === 1 ? '' : 's') + '</span></span></button>'
+        : '<span class="plain">' + esc(r.name) + '</span>';
+      const e = ends(r.chats, o.resolved, o.handed);
+      body += '<tbody class="grp' + (open ? ' open' : '') + '" data-topic="' + esc(r.name) + '"><tr class="top"><td>' + name + '</td><td class="num">' + num(r.chats) + '</td><td class="num muted hide-sm">' + (small ? '' : pct(r.chats, m.chats)) + '</td><td class="barcell hide-sm">' + e.bar + '</td><td class="num">' + e.b + '</td><td class="num">' + e.h + always(o.handed, r.chats) + '</td><td class="num">' + e.o + '</td>' + (cmp ? '<td class="num muted hide-sm">' + before(r.chats, r.compare, r.isNew) + '</td>' : '') + '</tr>';
+      rows.forEach((s, j) => {
+        const f = ends(s.n, s.b, s.h);
+        body += '<tr class="sub' + (j === rows.length - 1 ? ' last' : '') + '" id="' + ids[j] + '">' + cl('<span class="tree">' + esc(s.name) + '</span>', '') + cl(num(s.n), 'num') + cl(st.base < CFG.SMALL_TOTAL ? '' : pct(s.n, st.base) + ' of topic', 'num hide-sm') + cl(f.bar, 'barcell hide-sm') + cl(f.b, 'num') + cl(f.h + always(s.h, s.n), 'num') + cl(f.o, 'num') + (cmp ? cl('', 'hide-sm') : '') + '</tr>';
+      });
+      body += '</tbody>';
+    });
+    if (m.noTopic) {
+      const e = ends(m.noTopic, bots.noTopicBot, m.noTopicHuman);
+      body += '<tbody class="grp"><tr class="top"><td class="muted"><span class="plain">No topic chosen</span></td><td class="num">' + num(m.noTopic) + '</td><td class="num muted hide-sm">' + (small ? '' : (m.noTopic / m.chats < 0.005 ? '&lt;1%' : pct(m.noTopic, m.chats))) + '</td><td class="barcell hide-sm">' + e.bar + '</td><td class="num">' + e.b + '</td><td class="num">' + e.h + '</td><td class="num">' + e.o + '</td>' + (cmp ? '<td class="num muted hide-sm">' + before(m.noTopic, SB.compare.noTopic, false) + '</td>' : '') + '</tr></tbody>';
+    }
+    if (EXPANDABLE.length) s5 += '<div class="tblctl noprint"><button type="button" class="lnk" data-act="expand">Expand all</button><button type="button" class="lnk" data-act="collapse">Collapse all</button></div>';
+    const ex = SB.topicRows[0]; const eo = ex && SB.res[ex.name];
+    if (ex && eo && !small) {
+      const rest = Math.max(0, ex.chats - eo.resolved - eo.handed);
+      s5 += '<p class="example"><b>Example:</b> of the ' + num(ex.chats) + ' chats that picked ' + esc(ex.name) + ', ' + num(eo.resolved) + ' (' + pct(eo.resolved, ex.chats) + ') were completed by the bot, ' + num(eo.handed) + ' (' + pct(eo.handed, ex.chats) + ') needed a person, and ' + num(rest) + ' (' + pct(rest, ex.chats) + ') stopped replying or went on to another topic.</p>';
+    }
+    s5 += '<div class="tw"><table class="topics wide"><thead><tr><th>Topic</th><th class="num">Chats</th><th class="num hide-sm">Share of all chats</th><th class="hide-sm"><span class="sr">How they ended</span></th><th class="num">' + WORD.BOT + '</th><th class="num">' + WORD.HUMAN + '</th><th class="num">Stopped replying or went to another topic</th>' + (cmp ? '<th class="num hide-sm" title="' + esc(SB.p.compareText) + '">Chats ' + cmpName.toLowerCase() + '</th>' : '') + '</tr></thead>' + body + '</table></div>';
+    s5 += '<p class="def">A chat can pick several topics, so the Chats column adds up to more than the number of chats. Human assistance counts a chat only under the topic the customer was on when it was passed to a person. A sub-topic\'s share is out of its topic, and its three numbers are out of the sub-topic\'s own chats.' + (cmp ? ' "Chats ' + cmpName.toLowerCase() + '" = ' + esc(SB.p.compareText) + '.' : '') + '</p>';
+    const subTopics = Object.keys(SB.sub.tables);
+    if (!subTopics.length) s5 += '<p class="foot">Sub-topics are not recorded yet.</p>';
+    else {
+      const late = subTopics.filter(t => SB.sub.tables[t].base < (SB.res[t] ? SB.res[t].chats : 0));
+      if (late.length) s5 += '<p class="foot">Sub-topic shares count only chats since the sub-topics were first recorded (' + late.map(t => esc(t) + ' from ' + esc(dayText(SB.sub.tables[t].since))).join(', ') + ').</p>';
+    }
+    if (SB.sub.unrecognised) s5 += '<p class="foot">' + SB.sub.unrecognised + ' sub-topic(s) did not match a topic in their own chat and are not shown. Please tell ' + esc(CFG.ADMIN_NAME) + '.</p>';
+    s5 += '</section>';
+  }
+
+  // By month
+  const s6 = SB.months.length ? '<section class="card">' + cardHead('Total chats by month', TAG_B + ' · every month, whatever period is picked above') + endLegend + bchart('month', 'cBotMonth') + '<div class="tw"><table><thead><tr><th>Month</th><th class="num">Total chats</th><th class="num">' + WORD.BOT + '</th><th class="num">' + WORD.HUMAN + '</th><th class="num">' + WORD.QUIET + '</th></tr></thead><tbody>' +
+    SB.months.map(r => '<tr><td><b>' + esc(monthLabel(r.label)) + '</b></td><td class="num"><b>' + num(r.chats) + '</b></td><td class="num">' + np(r.BOT, r.chats) + '</td><td class="num">' + np(r.HUMAN, r.chats) + '</td><td class="num">' + np(r.QUIET, r.chats) + '</td></tr>').join('') + '</tbody></table></div>' +
+    '<p class="def">Shares are out of that month\'s total chats. The current month counts the days so far.</p></section>' : '';
+  return head + alertBox(SB.alerts) + s4 + sDay + sCards + sWhen + s5 + s6;
+}
+
+// ------------------------------------------------------------ Chart
+/** Shades the special days (CFG.EVENTS) behind the bars. */
+const eventBands = {
+  id: 'eventBands',
+  beforeDatasetsDraw(chart, args, o) {
+    if (!o || !o.idx || !o.idx.length) return;
+    const { ctx, chartArea: a, scales: { x } } = chart; const half = x.width / Math.max(1, chart.data.labels.length) / 2;
+    ctx.save(); ctx.fillStyle = o.color;
+    o.idx.forEach(i => { const cx = x.getPixelForValue(i); ctx.fillRect(cx - half, a.top, half * 2, a.bottom - a.top); });
+    ctx.restore();
+  },
+};
+function drawChart(SA, quiet) {
+  CHARTS.forEach(c => c.destroy()); CHARTS = [];
+  const els = SA ? Array.from(document.querySelectorAll('canvas.js-time')) : []; const bels = BOTVIZ ? Array.from(document.querySelectorAll('canvas.js-bot')) : [];
+  if (!els.length && !bels.length) return;
+  if (!window.Chart) { document.querySelectorAll('.chart').forEach(e => { e.style.display = 'none'; }); document.querySelectorAll('.nochart').forEach(e => { e.textContent = 'The chart could not load. The tables are still correct.'; }); return; }
+  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily; Chart.defaults.font.size = 12.5; Chart.defaults.color = css('--muted');
+  if (els.length) drawTimeCharts(SA, els, quiet);
+  bels.forEach(el => { const cfg = botChartConfig(el.dataset.kind, quiet); if (cfg) CHARTS.push(new Chart(el, cfg)); });
+}
+
+/** Chart.js settings shared by the stacked WhatsApp FAQ charts. */
+function botChartConfig(kind, quiet) {
+  const V = BOTVIZ; if (!V) return null;
+  const col = k => css('--' + k);
+  const ds = (label, data, k, top) => ({ label, data, backgroundColor: col(k), borderRadius: top ? { topLeft: 4, topRight: 4 } : 0, borderSkipped: false, maxBarThickness: 34, stack: 's' });
+  let labels, sets, title, decimals = 0;
+  const ending = rows => { const s = [ds(WORD.BOT, rows.map(r => r.BOT), 'ok'), ds(WORD.HUMAN, rows.map(r => r.HUMAN), 'person'), ds(WORD.QUIET, rows.map(r => r.QUIET), 'quiet')]; if (rows.some(r => r.UNKNOWN)) s.push(ds(WORD.UNKNOWN, rows.map(r => r.UNKNOWN), 'unknown')); s[s.length - 1].borderRadius = { topLeft: 4, topRight: 4 }; return s; };
+  if (kind === 'day') { labels = V.day.map(b => b.label); sets = ending(V.day); title = it => (V.unit === 'week' ? 'Week from ' : '') + it[0].label + (V.day[it[0].dataIndex].partial ? ' (part week)' : ''); }
+  else if (kind === 'month') { labels = V.months.map(r => r.label); sets = ending(V.months); title = it => it[0].label; }
+  else if (kind === 'hour') {
+    labels = V.hour.map((_, h) => (h % 12 || 12) + (h < 12 ? 'a' : 'p')); title = it => hourText(it[0].dataIndex);
+    sets = [ds('Chats', V.hour.map(h => h.all), 'accent', true)];
+  } else if (kind === 'wd') {
+    labels = V.wd.labels; decimals = 1; title = it => it[0].label;
+    sets = [ds('Chats', V.wd.all.map(x => +x.toFixed(1)), 'accent', true)];
+  } else return null;
+  const unit = kind === 'wd' ? ' a day' : '';
+  return {
+    type: 'bar', data: { labels, datasets: sets },
+    options: {
+      animation: quiet ? false : { duration: 300 }, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: css('--ink'), titleColor: css('--panel'), bodyColor: css('--panel'), footerColor: css('--panel'), cornerRadius: 8, padding: 10, boxPadding: 4,
+        callbacks: { title, label: x => ' ' + x.dataset.label + ': ' + x.raw + unit, footer: kind === 'hour' || kind === 'wd' ? () => '' : it => 'Total: ' + (+it.reduce((a, x) => a + x.raw, 0).toFixed(decimals)) + ' chats' } } },
+      scales: { x: { stacked: true, grid: { display: false }, border: { display: false }, ticks: { autoSkip: true, maxRotation: 0 } }, y: { stacked: true, beginAtZero: true, border: { display: false }, grid: { color: css('--line') }, ticks: { precision: decimals ? undefined : 0 } } },
+    },
+  };
+}
+
+function drawTimeCharts(SA, els, quiet) {
+  const per = channelBuckets(SA); const evIdx = SA.buckets.map((b, i) => (b.event ? i : -1)).filter(i => i >= 0);
+  const datasets = activeChannels(SA).map(([name, k], i, all) => ({ label: name, data: per.map(p => p[k]), backgroundColor: css('--' + k), borderRadius: i === all.length - 1 ? { topLeft: 4, topRight: 4 } : 0, borderSkipped: false, maxBarThickness: 34, stack: 'ch' }));
+  els.forEach(el => CHARTS.push(new Chart(el, {
     type: 'bar',
-    data: { labels: S.buckets.map(b => b.label), datasets: [{ label: 'Chats', data: S.buckets.map(b => b.total), backgroundColor: S.buckets.map(b => css('--accent') + (b.partial ? '66' : '')), borderRadius: 2, maxBarThickness: 36 }] },
+    data: { labels: SA.buckets.map(b => b.label), datasets },
+    plugins: [eventBands],
     options: {
       animation: quiet ? false : { duration: 300 }, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: { title: it => (S.unit === 'week' ? 'Week from ' : '') + it[0].label + (S.buckets[it[0].dataIndex].partial ? ' (part week)' : ''), label: x => ' ' + x.raw + ' chat' + (x.raw === 1 ? '' : 's') } } },
-      scales: { x: { grid: { display: false }, ticks: { autoSkip: true, maxRotation: 0 } }, y: { beginAtZero: true, grid: { color: css('--line') }, ticks: { precision: 0 } } },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        eventBands: { idx: evIdx, color: css('--event') },
+        tooltip: {
+          backgroundColor: css('--ink'), titleColor: css('--panel'), bodyColor: css('--panel'), footerColor: css('--panel'), cornerRadius: 8, padding: 10, boxPadding: 4,
+          callbacks: {
+            title: it => (SA.unit === 'week' ? 'Week from ' : '') + it[0].label + (SA.buckets[it[0].dataIndex].partial ? ' (part week)' : '') + (SA.buckets[it[0].dataIndex].event ? ' · special day' : ''),
+            label: x => ' ' + x.dataset.label + ': ' + x.raw,
+            footer: it => 'Total: ' + SA.buckets[it[0].dataIndex].total + ' enquiries',
+          },
+        },
+      },
+      scales: { x: { stacked: true, grid: { display: false }, border: { display: false }, ticks: { autoSkip: true, maxRotation: 0 } }, y: { stacked: true, beginAtZero: true, border: { display: false }, grid: { color: css('--line') }, ticks: { precision: 0 } } },
     },
-  });
+  })));
 }
 
-function applyDates(changed) {
+function applyDates() {
   let f = $('#from').value, t = $('#to').value;
   if (!f || !t) return;
   if (t < f) { const x = f; f = t; t = x; $('#from').value = f; $('#to').value = t; $('#live').textContent = 'The From date was after the To date, so they were swapped.'; }
@@ -684,28 +1600,48 @@ function applyDates(changed) {
   setKey('r:' + f + ':' + t);
 }
 
-const themeLabel = () => { const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); $('#theme').textContent = cur === 'dark' ? 'Light mode' : 'Dark mode'; };
+const currentTheme = () => document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+const themeLabel = () => { $('#theme').textContent = currentTheme() === 'dark' ? 'Light mode' : 'Dark mode'; };
 
 $('#period').addEventListener('change', () => {
   const v = $('#period').value;
   if (v === 'custom') { $('#from').focus(); if ($('#from').value && $('#to').value) applyDates(); return; }
   setKey(v);
 });
-$('#from').addEventListener('change', () => applyDates('from'));
-$('#to').addEventListener('change', () => applyDates('to'));
+$('#from').addEventListener('change', applyDates);
+$('#to').addEventListener('change', applyDates);
 $('#refresh').addEventListener('click', () => load(true));
 $('#print').addEventListener('click', () => window.print());
 $('#theme').addEventListener('click', () => {
-  const cur = document.documentElement.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  const next = cur === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', next); store('theme', next); themeLabel(); render(true);
+  const next = currentTheme() === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', next); store('theme', next); themeLabel(); render(true);
 });
-window.addEventListener('beforeprint', () => { if (CHART) { CHART.resize(); } });
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (!document.documentElement.getAttribute('data-theme')) { themeLabel(); if (RENDERED) render(true); } }); } catch (e) { /* older browsers */ }
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) setTab(b.dataset.tab, true); });
+$('#tabs').addEventListener('keydown', e => {
+  const i = TABS.indexOf(TAB); const j = { ArrowRight: (i + 1) % TABS.length, ArrowLeft: (i + TABS.length - 1) % TABS.length, Home: 0, End: TABS.length - 1 }[e.key];
+  if (j !== undefined) { e.preventDefault(); setTab(TABS[j], true, true); }
+});
+window.addEventListener('hashchange', () => { setTab(tabFromHash()); const r = $('#tabs').getBoundingClientRect(); if (r.top < 0) window.scrollTo(0, window.scrollY + r.top - 8); });
+/** One open/closed state per topic name, so the Completed-by-bot card, the Human-assistance card and the table always open together. */
+function setOpen(name, open) {
+  if (open) OPEN.add(name); else OPEN.delete(name);
+  document.querySelectorAll('.tgl').forEach(b => { if (b.dataset.topic === name) { b.setAttribute('aria-expanded', String(open)); b.closest('tbody').classList.toggle('open', open); } });
+}
+$('#app').addEventListener('click', e => {
+  const t = e.target.closest('.tgl');
+  if (t) { setOpen(t.dataset.topic, !OPEN.has(t.dataset.topic)); return; }
+  const a = e.target.closest('[data-act]');
+  if (a) { const on = a.dataset.act === 'expand'; document.querySelectorAll('.tgl').forEach(b => setOpen(b.dataset.topic, on)); }
+});
+window.addEventListener('beforeprint', () => { document.querySelectorAll('.tabpanel').forEach(p => { p.hidden = false; }); document.querySelectorAll('details').forEach(d => { d.open = true; }); CHARTS.forEach(c => c.resize()); });
+window.addEventListener('afterprint', () => { document.querySelectorAll('details').forEach(d => { d.open = false; }); setTab(TAB); });
 (function init() {
   const t = store('theme'); if (t) document.documentElement.setAttribute('data-theme', t); themeLabel();
+  TAB = tabFromHash(); setTab(TAB);
   load(true);
   setInterval(() => { if (!document.hidden) load(false); }, CFG.REFRESH_MINUTES * 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden && FETCHED_AT && Date.now() - FETCHED_AT > CFG.REFRESH_MINUTES * 60000) load(false); });
 })();
 </script>
-</body>
-</html>
+
+</body></html>
