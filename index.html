@@ -342,6 +342,37 @@ details.more-info .tw { margin-top: 12px; }
   tbody tr:hover td { background: none; }
   details.more-info > * { display: block; }
 }
+/* Login (only when the page reads its data through the Dashboard API) */
+.login { max-width: 440px; margin: 48px auto; }
+.login form { display: grid; gap: 12px; margin-top: 14px; }
+.login label { font-size: 14px; color: var(--muted); }
+.login input[type="password"] { font: inherit; font-size: 15px; color: var(--ink); background: var(--panel); border: 1px solid var(--line2); border-radius: 10px; padding: 10px 12px; width: 100%; box-sizing: border-box; }
+.login input[type="password"]:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
+.login .err { color: var(--alert); font-size: 14px; min-height: 1.3em; margin: 0; }
+body.locked .tabs, body.locked #filters, body.locked #notices, body.locked #logout, body.locked #print { display: none; }
+/* Email Data: filter and search */
+.emf { display: flex; flex-wrap: wrap; gap: 12px 14px; align-items: flex-end; }
+.emf .f { display: grid; gap: 5px; min-width: 150px; }
+.emf .f.grow { flex: 1 1 240px; }
+.emf .f.small { min-width: 90px; width: 100px; }
+.emf label { font-size: 13px; color: var(--muted); }
+.emf input[type="search"], .emf input[type="number"] { font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--line2); border-radius: 10px; padding: 8px 11px; width: 100%; box-sizing: border-box; }
+.emf input:focus, .emf select:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
+.emf .checks { display: flex; flex-wrap: wrap; gap: 6px 16px; padding-bottom: 8px; }
+.emf .chk { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--ink); cursor: pointer; }
+.linkish { font: inherit; font-weight: 600; color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; text-decoration: underline; text-decoration-color: var(--line2); text-underline-offset: 3px; }
+.linkish:hover { text-decoration-color: var(--ink); }
+tfoot td { border-top: 2px solid var(--line2); }
+td.nowrap { white-space: nowrap; }
+/* Compact, scrollable email lists (Email Data tab) */
+.scrollbox { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: var(--r-md); }
+.scrollbox thead th { position: sticky; top: 0; background: var(--panel); z-index: 1; }
+.compact table { font-size: 13px; }
+.compact th, .compact td { padding: 6px 9px; vertical-align: top; }
+.compact a { color: var(--ink); font-weight: 600; }
+@media print { .scrollbox { max-height: none; overflow: visible; } }
+.health { font-size: 13px; color: var(--muted); margin-top: 10px; }
+.health.bad { color: var(--alert); font-weight: 600; }
 </style>
 </head>
 <body>
@@ -358,6 +389,7 @@ details.more-info .tw { margin-top: 12px; }
     <div class="tools noprint">
       <button type="button" id="print" class="btn ghost">Print</button>
       <button type="button" id="theme" class="btn ghost">Dark mode</button>
+      <button type="button" id="logout" class="btn ghost" hidden>Log out</button>
     </div>
   </header>
 
@@ -365,6 +397,7 @@ details.more-info .tw { margin-top: 12px; }
     <button type="button" class="tab" role="tab" id="tab-overview" data-tab="overview" aria-controls="p-overview">Overview</button>
     <button type="button" class="tab" role="tab" id="tab-all-channels" data-tab="all-channels" aria-controls="p-all-channels">Daily Log (SleekFlow data)</button>
     <button type="button" class="tab" role="tab" id="tab-bot" data-tab="bot" aria-controls="p-bot">WhatsApp FAQ customer data</button>
+    <button type="button" class="tab" role="tab" id="tab-email" data-tab="email" aria-controls="p-email" hidden>Email Data</button>
     <button type="button" class="tab" role="tab" id="tab-definitions" data-tab="definitions" aria-controls="p-definitions">How to read this</button>
   </div>
  </div>
@@ -429,6 +462,7 @@ const CFG = {
     { name: 'Store Information', also: ['store', 'stores', 'store & hours', 'store and hours', 'store info'] },
     { name: 'Restock', also: ['restocks'] },
     { name: 'Pick-up Order', also: ['pick-up', 'pickup', 'pick up'] },
+    { name: 'Event', also: ['events', 'event / sale', 'promotion', 'promo'] },   // Amani 21 Oct: new LOG topic EVENT (sales / promotions)
     { name: 'Other', also: ['other (not selected)', 'asked for a person', 'talk to a human'] },
   ],
   DETAILS: [
@@ -923,6 +957,185 @@ function botLogGaps(rd, read, p) {
 }
 /* ==================================================================== LOGIC-END */
 
+/* ==================================================================== EMAIL-LOGIC-START
+   R1/R2 email numbers from the private sheet "Machino CS — Private Data" (tabs Email Daily Total, Enquiry Types,
+   Email Count Log), which reach the page only through the Dashboard API after login. Counts only: never names,
+   addresses or subjects. Tested by google-apps-script/tracker/test-dashboard-email.js (reads this block). */
+const EMAIL_CFG = {
+  TOTAL: { date: 'Date', total: 'Email enquiries (all mailboxes, de-duplicated)', postco: 'Return portal (PostCo)', contact: 'Of which: contact form (Shopify)', updated: 'Updated at' },
+  TYPES: { date: 'Date', channel: 'Channel', total: 'Total', unclear: 'Unclear' },
+  TYPES_CHANNEL: 'Email',
+  CATEGORIES: [['DEFECT', 'Defect / Complaint'], ['ORDER', 'Order Status / Delivery'], ['RETURN', 'Return / Exchange'], ['SIZING', 'Sizing'], ['STORE', 'Store / Stock'], ['OTHER', 'Other / Unknown']],
+  RUNS: { at: 'Run at', date: 'Date', note: 'Note' },
+  // Email Log: customer detail. Only arrives when the Dashboard API owner switched SHOW_EMAIL_LOG on.
+  LOG: { date: 'Date', time: 'Time', from: 'From', address: 'Email', subject: 'Subject', category: 'Category', keywords: 'Keywords', order: 'Order No', link: 'Link', why: 'Why', counted: 'In the daily email number? (Yes / No / Separate = PostCo)' },
+  STALE_HOURS: 16,             // runs at about 9am, 1pm and 6pm; the longest normal gap is 6pm → 9am (15 h)
+  LOG_SHOW_MAX: 100,           // Email Log rows shown at once (search to narrow down)
+};
+const emNum = v => { const s = String(v === null || v === undefined ? '' : v).replace(/,/g, '').trim(); if (s === '') return null; const n = Number(s); return isFinite(n) ? n : null; };
+const emNorm = s => String(s === null || s === undefined ? '' : s).trim().toLowerCase().replace(/\s+/g, ' ');
+
+/** values: rows of text. want: { key: header name }. The header row is found by name (first key required). Returns row objects or null. */
+function emTable(values, want) {
+  if (!Array.isArray(values)) return null;
+  const keys = Object.keys(want);
+  for (let h = 0; h < Math.min(values.length, 10); h++) {
+    const head = (values[h] || []).map(emNorm); const idx = {};
+    keys.forEach(k => { idx[k] = head.indexOf(emNorm(want[k])); });
+    if (idx[keys[0]] === -1 || idx[keys[1]] === -1) continue;
+    return values.slice(h + 1).map(r => { const o = {}; keys.forEach(k => { o[k] = idx[k] >= 0 ? (r || [])[idx[k]] : ''; }); return o; });
+  }
+  return null;
+}
+
+/** "2026-10-21 14:25" (Malaysia time) → ms, or null. Older rows written before 21 Oct may hold another format: null. */
+function emStampMs(s) {
+  const m = /^\s*'?(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})/.exec(String(s || ''));
+  return m ? fromWall(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : null;
+}
+
+/** The API's email part → { days: [{ iso, ms, total, postco, contact, updatedMs }], types: { iso: { DEFECT…, total, unclear } }, lastOkMs, lastRunMs, lastFailed, problems } */
+function readEmail(email) {
+  const out = { days: [], types: {}, lastOkMs: null, lastRunMs: null, lastFailed: false, problems: [] };
+  const total = emTable(email && email.total, EMAIL_CFG.TOTAL);
+  if (!total) out.problems.push('the Email Daily Total tab could not be read');
+  else total.forEach(r => {
+    const ms = isoDay(String(r.date).trim()); const n = emNum(r.total);
+    if (ms === null || n === null) return;
+    out.days.push({ iso: toIso(ms), ms, total: n, postco: emNum(r.postco) || 0, contact: emNum(r.contact) || 0, updatedMs: emStampMs(r.updated) });
+  });
+  out.days.sort((a, b) => a.ms - b.ms);
+  const want = Object.assign({}, EMAIL_CFG.TYPES); EMAIL_CFG.CATEGORIES.forEach(c => { want[c[0]] = c[1]; });
+  const types = emTable(email && email.types, want);
+  if (!types) out.problems.push('the Enquiry Types tab could not be read');
+  else types.forEach(r => {
+    const ms = isoDay(String(r.date).trim());
+    if (ms === null || emNorm(r.channel) !== emNorm(EMAIL_CFG.TYPES_CHANNEL)) return;
+    const o = { total: emNum(r.total) || 0, unclear: emNum(r.unclear) || 0 }; EMAIL_CFG.CATEGORIES.forEach(c => { o[c[0]] = emNum(r[c[0]]) || 0; });
+    out.types[toIso(ms)] = o;
+  });
+  const runs = emTable(email && email.runs, EMAIL_CFG.RUNS) || [];
+  runs.forEach(r => {
+    const ms = emStampMs(r.at); if (ms === null) return;
+    const ok = /^\s*OK\b/i.test(String(r.note || ''));
+    if (out.lastRunMs === null || ms >= out.lastRunMs) { out.lastRunMs = ms; out.lastFailed = !ok; }
+    if (ok && (out.lastOkMs === null || ms > out.lastOkMs)) out.lastOkMs = ms;
+  });
+  if (out.lastOkMs === null) out.days.forEach(d => { if (d.updatedMs !== null && (out.lastOkMs === null || d.updatedMs > out.lastOkMs)) out.lastOkMs = d.updatedMs; });
+  out.log = null;
+  if (email && email.log) {
+    const rows = emTable(email.log, EMAIL_CFG.LOG);
+    out.log = rows ? rows.filter(r => isoDay(String(r.date).trim()) !== null).map(r => Object.assign({}, r, { iso: toIso(isoDay(String(r.date).trim())) })) : null;
+  }
+  return out;
+}
+
+/**
+ * The Email tab's filters on the chosen period's days. f: { q, cat, days: 'all'|'weekday'|'weekend', min, postco, contact, sort }.
+ * cat = a category key: each day's number becomes that category's count and days without it drop out.
+ * q matches the date ("2026-10-21", "21 Oct"), the weekday ("Monday") and the busiest category name.
+ */
+function filterEmailDays(SE, re, f) {
+  f = f || {};
+  const q = emNorm(f.q), min = f.min === '' || f.min === null || f.min === undefined ? null : Number(f.min);
+  const topCat = t => { if (!t) return ''; let best = null; EMAIL_CFG.CATEGORIES.forEach(([k, name]) => { if ((t[k] || 0) > 0 && (!best || t[k] > t[best[0]])) best = [k, name]; }); return best ? best[1] : ''; };
+  let rows = SE.main.list.map(d => {
+    const t = re.types[d.iso] || null, dow = wall(d.ms).dow;
+    return Object.assign({}, d, { cats: t, dow, top: topCat(t), n: f.cat ? (t ? t[f.cat] || 0 : 0) : d.total });
+  }).filter(d => {
+    const weekend = d.dow === 0 || d.dow === 6;
+    if (f.days === 'weekday' && weekend) return false;
+    if (f.days === 'weekend' && !weekend) return false;
+    if (f.cat && !(d.n > 0)) return false;
+    if (min !== null && isFinite(min) && d.n < min) return false;
+    if (f.postco && !(d.postco > 0)) return false;
+    if (f.contact && !(d.contact > 0)) return false;
+    if (q && emNorm([d.iso, dayText(d.ms), dayText(d.ms) + ' ' + wall(d.ms).y, DAYS[d.dow], d.top].join(' | ')).indexOf(q) === -1) return false;
+    return true;
+  });
+  const by = { newest: (a, b) => b.ms - a.ms, oldest: (a, b) => a.ms - b.ms, most: (a, b) => b.n - a.n || b.ms - a.ms, fewest: (a, b) => a.n - b.n || b.ms - a.ms };
+  rows.sort(by[f.sort] || by.newest);
+  return { rows, of: SE.main.list.length, n: rows.reduce((a, d) => a + d.n, 0), postco: rows.reduce((a, d) => a + d.postco, 0), contact: rows.reduce((a, d) => a + d.contact, 0),
+    label: f.cat ? (EMAIL_CFG.CATEGORIES.find(c => c[0] === f.cat) || [, 'Email enquiries'])[1] : 'Email enquiries' };
+}
+
+/**
+ * The Daily Log with Email filled in from the HELLO email counter (Amani 21 Oct: show email in the Daily Log too).
+ * Only days whose own Email cell is 0/blank are filled, so nothing is ever counted twice (e.g. once PRODUCTION mode
+ * writes the sheet's Email column). The email number is added to that day's channel bars and Total enquiries.
+ * "Who replied" stays on the SleekFlow channels it measures: ch and complete are left as they were.
+ * Returns a NEW object (the read data is never changed) with emailDays = how many days got an email number.
+ */
+function withEmail(rd, re) {
+  if (!rd || !re || !re.days.length) return rd;
+  const by = {}; re.days.forEach(d => { by[d.iso] = d.total; });
+  let emailDays = 0;
+  const days = rd.days.map(d => {
+    const iso = toIso(d.ms);
+    if (d.em || !(iso in by)) return d;
+    emailDays++;
+    return Object.assign({}, d, { em: by[iso], total: d.total + by[iso], emFromCounter: true });
+  });
+  return Object.assign({}, rd, { days, emailDays });
+}
+
+/** Email Log rows (only when the owner switched them on) after search + filters. f: { q, cat, counted, day }. Newest first. */
+function filterEmailLog(log, f) {
+  f = f || {}; const q = emNorm(f.q);
+  return (log || []).filter(r => {
+    if (f.day && r.iso !== f.day) return false;
+    if (f.counted && emNorm(r.counted) !== emNorm(f.counted)) return false;
+    if (f.cat && emNorm(r.category).indexOf(emNorm(f.cat)) !== 0) return false;
+    if (q && emNorm([r.from, r.address, r.subject, r.category, r.keywords, r.order, r.why].join(' | ')).indexOf(q) === -1) return false;
+    return true;
+  }).sort((a, b) => (b.iso + ' ' + b.time).localeCompare(a.iso + ' ' + a.time));
+}
+
+/** Email numbers for the chosen period P (from periodFor), the day before, today so far, categories and data health. */
+function summarizeEmail(re, P, nowMs) {
+  const todayIso = toIso(nowMs), ydayIso = toIso(nowMs - DAY);
+  const pick = r => re.days.filter(d => d.ms >= r.start && d.ms < r.end);
+  const sum = (list, k) => list.reduce((a, d) => a + d[k], 0);
+  const catSum = list => { const o = { total: 0, unclear: 0 }; EMAIL_CFG.CATEGORIES.forEach(c => { o[c[0]] = 0; }); list.forEach(d => { const t = re.types[d.iso]; if (!t) return; Object.keys(o).forEach(k => { o[k] += t[k] || 0; }); }); return o; };
+  const main = pick(P.main), cmp = P.compare ? pick(P.compare) : [];
+  const finished = main.filter(d => d.iso !== todayIso);
+  const m = { days: main.length, finishedDays: finished.length, total: sum(main, 'total'), postco: sum(main, 'postco'), contact: sum(main, 'contact'),
+    perDay: finished.length ? sum(finished, 'total') / finished.length : null, includesToday: main.some(d => d.iso === todayIso), list: main, cats: catSum(main) };
+  const c = { days: cmp.length, total: sum(cmp, 'total'), postco: sum(cmp, 'postco'), cats: catSum(cmp) };
+  const find = iso => re.days.find(d => d.iso === iso) || null;
+  const stale = re.lastOkMs === null || nowMs - re.lastOkMs > EMAIL_CFG.STALE_HOURS * 3600000;
+  const catRows = EMAIL_CFG.CATEGORIES.map(([k, name]) => ({ key: k, name, n: m.cats[k], was: c.cats[k] })).filter(r => r.n || r.was).sort((a, b) => b.n - a.n);
+  return { p: P, main: m, cmp: c, canCompare: c.days > 0, today: find(todayIso), yesterday: find(ydayIso), catRows,
+    firstMs: re.days.length ? re.days[0].ms : null, lastOkMs: re.lastOkMs, stale, failed: re.lastFailed };
+}
+/* ==================================================================== EMAIL-LOGIC-END */
+
+// ============================================================ login + data link (Dashboard API)
+// API_URL '' = the page reads the two published CSVs as before (no login, no email part).
+// API_URL set = the page shows a login; after the password is checked by the Dashboard API (Google Apps Script,
+// google-apps-script/dashboard-api/), every number comes from there and the sheets need not be published.
+const APP = { API_URL: 'https://script.google.com/macros/s/AKfycbzBp0JB8X3HhZNBfE7SI3lU0Q81uWBI5Eln0FOv_Ga58TIm5tqICUTVEOud2fevKnsO/exec', TOKEN_KEY: 'mcsDashSession', API_TIMEOUT_S: 40 };
+const apiMode = () => !!APP.API_URL;
+const session = {
+  get() { try { const s = JSON.parse(sessionStorage.getItem(APP.TOKEN_KEY) || 'null'); return s && s.token && s.expiresAt > Date.now() ? s : null; } catch (e) { return null; } },
+  set(token, expiresAt) { try { sessionStorage.setItem(APP.TOKEN_KEY, JSON.stringify({ token, expiresAt })); } catch (e) { /* private mode: login lasts this page only */ } MEM_SESSION = { token, expiresAt }; },
+  clear() { try { sessionStorage.removeItem(APP.TOKEN_KEY); } catch (e) { /* ignore */ } MEM_SESSION = null; },
+  token() { const s = this.get() || (MEM_SESSION && MEM_SESSION.expiresAt > Date.now() ? MEM_SESSION : null); return s ? s.token : null; },
+};
+let MEM_SESSION = null;
+
+/** POST to the Dashboard API as text/plain JSON (a "simple" request: no browser pre-check needed). */
+async function api(body) {
+  const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), APP.API_TIMEOUT_S * 1000);
+  try {
+    const res = await fetch(APP.API_URL, { method: 'POST', body: JSON.stringify(body), signal: ctrl.signal, cache: 'no-store', redirect: 'follow' });
+    const text = await res.text();
+    if (/^\s*</.test(text)) throw new Error('the data link returned a web page, not data. Is the Dashboard API deployed for "Anyone"?');
+    return JSON.parse(text);
+  } catch (e) { throw new Error(e.name === 'AbortError' ? 'the data link took too long to answer.' : e.message); }
+  finally { clearTimeout(timer); }
+}
+
 // ============================================================ page (look and layout only; every number comes from the logic block above)
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -952,6 +1165,9 @@ const CHANNELS = [['WhatsApp', 'wa'], ['Instagram', 'ig'], ['TikTok', 'tt'], ['E
 const NOT_A_CONCERN = ['Order found', 'Pick-up open', 'General size guide', 'Sent online return link', 'Bought in store'];
 
 let READ_A = null, READ_B = null, TEXT_A = null, TEXT_B = null, ERR_A = null, ERR_B = null, FETCHED_AT = null, LOADING = false, CHARTS = [], RENDER_DAY = null, KEY = null;
+let READ_E = null, TEXT_E = null, ERR_E = null, LOCKED = false;   // email part + login state (Dashboard API only)
+let EMAIL_IN_DAILY = 0;                                            // Daily Log days that got their Email number from the email counter
+const SRC_E = 'Email Data', TAG_E = 'Email';
 
 async function fetchCsv(url) {
   const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), CFG.FETCH_TIMEOUT_S * 1000);
@@ -966,14 +1182,21 @@ async function fetchCsv(url) {
 }
 
 async function load(manual) {
-  if (LOADING) return; LOADING = true; $('#refresh').disabled = true;
+  if (LOADING) return;
+  if (apiMode() && !session.token()) { showLogin(); return; }
+  LOADING = true; $('#refresh').disabled = true;
   try {
-    const [a, b] = await Promise.allSettled([fetchCsv(CFG.DAILY_CSV_URL), fetchCsv(CFG.CSV_URL)]);
     let changed = false;
-    if (a.status === 'fulfilled') { if (a.value !== TEXT_A) { try { READ_A = readDaily(parseCSV(a.value)); TEXT_A = a.value; ERR_A = null; changed = true; } catch (e) { ERR_A = e.message; } } else ERR_A = null; }
-    else ERR_A = a.reason.message;
-    if (b.status === 'fulfilled') { if (b.value !== TEXT_B) { try { READ_B = readChats(parseCSV(b.value)); TEXT_B = b.value; ERR_B = null; changed = true; } catch (e) { ERR_B = e.message; } } else ERR_B = null; }
-    else ERR_B = b.reason.message;
+    if (apiMode()) {
+      changed = await loadFromApi();
+      if (LOCKED) return;
+    } else {
+      const [a, b] = await Promise.allSettled([fetchCsv(CFG.DAILY_CSV_URL), fetchCsv(CFG.CSV_URL)]);
+      if (a.status === 'fulfilled') { if (a.value !== TEXT_A) { try { READ_A = readDaily(parseCSV(a.value)); TEXT_A = a.value; ERR_A = null; changed = true; } catch (e) { ERR_A = e.message; } } else ERR_A = null; }
+      else ERR_A = a.reason.message;
+      if (b.status === 'fulfilled') { if (b.value !== TEXT_B) { try { READ_B = readChats(parseCSV(b.value)); TEXT_B = b.value; ERR_B = null; changed = true; } catch (e) { ERR_B = e.message; } } else ERR_B = null; }
+      else ERR_B = b.reason.message;
+    }
     FETCHED_AT = Date.now();
     const newDay = RENDER_DAY !== toIso(Date.now());
     if (changed || newDay || !RENDERED) { fillPeriods(); render(!manual && CHARTS.length > 0); RENDERED = true; }
@@ -981,6 +1204,69 @@ async function load(manual) {
   } finally { LOADING = false; $('#refresh').disabled = false; }
 }
 let RENDERED = false;
+
+/** One call to the Dashboard API: the same tables the CSVs used to give, plus the email part. Returns true if anything changed. */
+async function loadFromApi() {
+  let r;
+  try { r = await api({ action: 'data', token: session.token() }); }
+  catch (e) { ERR_A = ERR_B = ERR_E = e.message; return false; }
+  if (!r || !r.ok) {
+    if (r && r.code === 'LOGIN_NEEDED') { session.clear(); showLogin('Your login has ended. Please log in again.'); return false; }
+    ERR_A = ERR_B = ERR_E = 'the data link answered ' + ((r && r.code) || 'with an error') + '.'; return false;
+  }
+  const er = r.errors || {}; let changed = false;
+  const take = (vals, prev, reader, missing) => {
+    if (!vals) return { err: missing };
+    const t = JSON.stringify(vals); if (t === prev.text) return { same: true };
+    try { return { read: reader(vals), text: t }; } catch (e) { return { err: e.message }; }
+  };
+  const a = take(r.daily, { text: TEXT_A }, readDaily, 'the Daily Log ' + (er.daily || 'did not arrive') + '.');
+  if (a.read) { READ_A = a.read; TEXT_A = a.text; ERR_A = null; changed = true; } else if (a.same) ERR_A = null; else ERR_A = a.err;
+  const b = take(r.chats, { text: TEXT_B }, readChats, 'the WhatsApp FAQ data ' + (er.chats || 'did not arrive') + '.');
+  if (b.read) { READ_B = b.read; TEXT_B = b.text; ERR_B = null; changed = true; } else if (b.same) ERR_B = null; else ERR_B = b.err;
+  const em = r.email && (r.email.total || r.email.types) ? r.email : null;
+  const e = take(em, { text: TEXT_E }, readEmail, 'the email numbers ' + (er.emailTotal || 'did not arrive') + '.');
+  if (e.read) { READ_E = e.read; TEXT_E = e.text; ERR_E = READ_E.problems.length ? READ_E.problems.join('; ') + '.' : null; changed = true; }
+  else if (!e.same) ERR_E = e.err;
+  return changed;
+}
+
+const LOGIN_MSG = {
+  WRONG_PASSWORD: 'Wrong password. Please try again.',
+  LOCKED: 'Too many wrong tries. Please wait 15 minutes, then try again.',
+  NOT_SET_UP: 'The dashboard password has not been set up yet. Please tell IT.',
+  SERVER_ERROR: 'The data link had a problem. Please try again in a minute, or tell IT.',
+};
+
+/** Logged out: no numbers on the page at all, only the login box. */
+function showLogin(message) {
+  LOCKED = true; document.body.classList.add('locked');
+  CHARTS.forEach(c => c.destroy()); CHARTS = [];
+  READ_A = READ_B = READ_E = null; TEXT_A = TEXT_B = TEXT_E = null; ERR_A = ERR_B = ERR_E = null; RENDERED = false; LAST = null; FETCHED_AT = null;
+  $('#period-title').textContent = ''; $('#morning').textContent = ''; $('#meta').textContent = 'Private report. Please log in to see the numbers.'; $('#notices').innerHTML = '';
+  $('#app').innerHTML = '<section class="card login">' + cardHead('Log in') + '<p class="muted">This report is for the Machino team only. Enter the dashboard password.</p>' +
+    '<form id="login-form" autocomplete="off"><label for="pw">Password</label><input type="password" id="pw" name="pw" autocomplete="current-password" required>' +
+    '<p class="err" id="login-err" role="alert">' + esc(message || '') + '</p><button type="submit" class="btn">Log in</button></form>' +
+    '<p class="foot">You stay logged in until you close the browser or press Log out.</p></section>';
+  const pw = $('#pw'); if (pw) pw.focus();
+}
+
+function unlock() {
+  LOCKED = false; document.body.classList.remove('locked'); $('#logout').hidden = false;
+  $('#app').innerHTML = '<p class="loading">Loading the latest numbers…</p>';
+}
+
+async function submitLogin(form) {
+  const pw = $('#pw').value; const btn = form.querySelector('button[type="submit"]');
+  btn.disabled = true; $('#login-err').textContent = 'Checking…';
+  try {
+    const r = await api({ action: 'login', password: pw });
+    if (r && r.ok) { session.set(r.token, r.expiresAt); unlock(); await load(true); return; }
+    $('#login-err').textContent = r && r.code === 'LOCKED' && r.retryMinutes ? 'Too many wrong tries. Please wait ' + r.retryMinutes + ' minutes, then try again.' : LOGIN_MSG[r && r.code] || 'Login failed. Please tell IT.';
+  } catch (err) { $('#login-err').textContent = 'Could not reach the data link: ' + err.message; }
+  if ($('#pw')) { $('#pw').value = ''; $('#pw').focus(); }
+  btn.disabled = false;
+}
 
 const firstMs = () => { const v = [READ_A && READ_A.firstMs, READ_B && READ_B.logStartMs].filter(x => x !== null && x !== undefined); return v.length ? Math.min.apply(null, v) : null; };
 
@@ -1033,6 +1319,7 @@ function renderMeta(SA, SB) {
   bits.push('Malaysia time');
   if (S) bits.push(S.covered || S.canCompare ? 'Compared with ' + esc(S.p.compareText) : 'No earlier period to compare with');
   if (READ_A && READ_A.lastMs !== null) bits.push('Daily Log filled up to ' + esc(dayText(READ_A.lastMs)));
+  if (READ_E && READ_E.lastOkMs !== null) bits.push('Email updated ' + esc(dayText(READ_E.lastOkMs)) + ' ' + esc(clock(READ_E.lastOkMs)));
   $('#meta').innerHTML = bits.join(' · ');
 }
 
@@ -1042,6 +1329,9 @@ function renderNotices(SA, SB) {
   const tech = e => '<p class="tech">Technical detail for ' + esc(CFG.ADMIN_NAME) + ': ' + esc(e) + '</p>';
   if (ERR_A) n.push('<div class="notice"><p><b>We could not load the ' + SRC_A + '.</b> ' + (READ_A ? 'Showing the last numbers that loaded.' : 'The ' + SRC_B + ' is still correct. Please tell ' + esc(CFG.ADMIN_NAME) + '.') + '</p>' + tech(ERR_A) + '</div>');
   if (ERR_B) n.push('<div class="notice"><p><b>We could not load the ' + SRC_B + '.</b> ' + (READ_B ? 'Showing the last numbers that loaded.' : 'The ' + SRC_A + ' is still correct. Please tell ' + esc(CFG.ADMIN_NAME) + '.') + '</p>' + tech(ERR_B) + '</div>');
+  if (ERR_E) n.push('<div class="notice"><p><b>We could not load the email numbers.</b> ' + (READ_E ? 'Showing the last numbers that loaded.' : 'The other numbers are still correct. Please tell ' + esc(CFG.ADMIN_NAME) + '.') + '</p>' + tech(ERR_E) + '</div>');
+  const SE = LAST && LAST.SE;
+  if (SE && (SE.stale || SE.failed)) n.push('<div class="notice"><p><b>The email numbers may be out of date.</b> ' + (SE.failed ? 'The last email count did not finish.' : 'No successful email count in the last ' + EMAIL_CFG.STALE_HOURS + ' hours.') + ' Please tell ' + esc(CFG.ADMIN_NAME) + '.</p></div>');
   if (SB && SB.main.sample) n.push('<div class="notice info"><p><b>Sample data:</b> ' + SB.main.sample + ' of the ' + SB.main.chats + ' WhatsApp FAQ chats in this period are made-up test rows. Remove them from the sheet before using these numbers.</p><p class="tech">Rows marked ' + esc(CFG.SAMPLE_VERSION) + ' in the Flow Version column.</p></div>');
   const S = SA || SB; const evs = uniq(((SA && SA.events) || []).concat((SB && SB.events) || []));
   if (evs.length) n.push('<div class="notice info"><p>This period, or the one it is compared with, includes ' + esc(joinAnd(evs)) + '. Comparisons are for information only and no warnings are raised.</p></div>');
@@ -1065,7 +1355,7 @@ const DEFS = [
 ];
 
 let OPEN = new Set(), EXPANDABLE = [], TAB = 'overview';
-const TABS = ['overview', 'all-channels', 'bot', 'definitions'];
+const TABS = ['overview', 'all-channels', 'bot', 'email', 'definitions'].filter(t => t !== 'email' || apiMode());
 const CHEV = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M4.5 2.5 8 6l-3.5 3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 /* ---- small building blocks */
@@ -1140,27 +1430,31 @@ function setTab(t, write, focus) {
 }
 
 function render(quiet) {
-  const rd = READ_A, rb = READ_B; const nowMs = Date.now();
+  const rd = withEmail(READ_A, READ_E), rb = READ_B; const nowMs = Date.now();
+  EMAIL_IN_DAILY = rd && rd.emailDays ? rd.emailDays : 0;
   RENDER_DAY = toIso(nowMs);
   const logStart = firstMs();
   const SA = rd && rd.days.length ? summarizeA(rd, nowMs, KEY || 'this', logStart) : null;
   const SB = rb ? summarize(rb, nowMs, KEY || 'this') : null;
   const P = SA ? SA.p : SB ? SB.p : periodFor(KEY || 'this', nowMs, logStart);
+  const SE = READ_E ? summarizeEmail(READ_E, P, nowMs) : null;
   $('#period-title').textContent = P.title;
   $('#from').value = toIso(P.main.start); $('#to').value = toIso(Math.min(P.main.end, P.today.end) - 1);
   $('#morning').textContent = SA && SA.morning ? SA.morning : '';
-  LAST = { SA, SB };
+  LAST = { SA, SB, SE };
   renderMeta(SA, SB); renderNotices(SA, SB);
 
   const A = partA(SA), B = partB(SB, rb);
-  let h = panel('overview', overview(SA, SB));
+  let h = panel('overview', overview(SA, SB, SE));
   h += panel('all-channels', A);
   h += panel('bot', B);
+  if (apiMode()) h += panel('email', partE(SE));
 
   let d = pageHead('How to read this report', 'Every number on this page uses these words. Nothing here is a score for any one person.') +
     '<div class="cols c11"><section class="card">' + cardHead('The two sources') + '<ul class="oc">' +
     '<li>' + key('wa') + '<span class="oc-name">' + SRC_A + '</span><span></span><span class="oc-c">All channels (WhatsApp, Instagram, TikTok). Counts customers once a day and who replied to them. Filled every morning for yesterday.</span></li>' +
     '<li>' + key('ok') + '<span class="oc-name">' + SRC_B + '</span><span></span><span class="oc-c">WhatsApp only. One row per chat with the FAQ menu: what the customer picked and how the chat ended. Instagram and TikTok have no FAQ menu.</span></li></ul>' +
+    (apiMode() ? '<ul class="oc"><li>' + key('accent') + '<span class="oc-name">' + SRC_E + '</span><span></span><span class="oc-c">Customer emails to the HELLO mailbox, counted automatically about 3 times a day (9am, 1pm, 6pm). PostCo return requests are counted separately.</span></li></ul>' : '') +
     '<p class="foot">They measure different things, so no number on this page adds or divides one by the other.</p></section>' +
     '<section class="card">' + cardHead('How numbers are written') + '<ul class="oc">' +
     '<li><span></span><span class="oc-name">154 (28%)</span><span></span><span class="oc-c">The number first, then its share in brackets. The card or column title says what the share is out of.</span></li>' +
@@ -1185,16 +1479,19 @@ function render(quiet) {
     if (st.duplicates) notes.push(st.duplicates + ' repeated row(s) ignored.');
   }
   notes.push('Based on ' + (rd ? rd.days.length + ' days of the ' + SRC_A : 'the ' + SRC_A) + ' and ' + (rb ? num(rb.chats.length) + ' chats of the ' + SRC_B : 'the ' + SRC_B) + ', both kept in Google Sheets. The page checks for new numbers every ' + CFG.REFRESH_MINUTES + ' minutes.');
+  if (apiMode()) d += '<section class="card">' + cardHead('Email words') + '<div class="tw"><table class="defs"><thead><tr><th>Term</th><th>What it means</th></tr></thead><tbody>' +
+    EMAIL_DEFS.map(r => '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td></tr>').join('') + '</tbody></table></div></section>';
   d += '<section class="card notes">' + cardHead('Notes') + '<ul>' + notes.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul></section>';
   h += panel('definitions', d);
 
   $('#app').innerHTML = h;
   setTab(TAB);
   drawChart(SA, quiet);
+  if (apiMode()) renderEmailResults(quiet);   // the Email Data tab draws its own (filtered) chart
 }
 
 // ------------------------------------------------------------ Overview
-function overview(SA, SB) {
+function overview(SA, SB, SE) {
   const okA = !!(SA && SA.main.days), okB = !!(SB && SB.main.chats);
   const cmpA = SA ? esc(SA.p.compareText) : '', cmpB = SB ? esc(SB.p.compareText) : '';
   const notA = SA ? 'No days in this period.' : ERR_A ? 'The ' + SRC_A + ' could not be loaded.' : READ_A ? 'No Daily Log days yet.' : 'Loading…';
@@ -1281,13 +1578,167 @@ function overview(SA, SB) {
       (m.reply && m.reply.n >= 3 ? '<div class="reply"><p class="main">Staff reply time: <b>' + m.reply.mid + ' min</b> <span class="muted">(typical day)</span></p></div>' : '') + '</section>';
   }
 
-  return '<div class="kpis">' + k1 + k2 + k3 + k4 + '</div>' + strip + '<div class="cols c32">' + ask + concerns + '</div>' + '<div class="cols c21">' + time + chans + '</div>' + '<div class="cols c11">' + ended + replied + '</div>';
+  return '<div class="kpis">' + k1 + k2 + k3 + k4 + '</div>' + strip + '<div class="cols c32">' + ask + concerns + '</div>' + (apiMode() ? emailOverview(SE) : '') + '<div class="cols c21">' + time + chans + '</div>' + '<div class="cols c11">' + ended + replied + '</div>';
+}
+
+// ------------------------------------------------------------ Email (HELLO) — R1 volume + R2 categories
+const EMAIL_DEFS = [
+  ['Email enquiry', 'One email conversation in which a customer wrote at least once that day. Three emails in the same conversation on one day = 1. Our replies, staff, Machino Singapore, couriers, automatic emails, spam, promotions, job applications, sales pitches and sponsorship requests are not counted.'],
+  ['PostCo return request', 'A return or exchange request made through the PostCo portal. Counted on its own, never inside the email enquiries.'],
+  ['Contact form', 'A message from the website contact form (Shopify). It is a customer email, so it is counted inside the email enquiries and also shown on its own.'],
+  ['Email category', 'What the email is about, from keywords in the subject and first lines (English and Malay). A guide, not exact: unclear ones go to Other / Unknown.'],
+  ['Today so far', 'Today\'s count up to the last automatic run (about 9am, 1pm and 6pm). It goes up during the day.'],
+];
+const emDot = '<span class="key" style="background:var(--accent)"></span>';
+const emDay = ms => dayText(ms) + ' ' + wall(ms).y;
+function emHealth(SE) {
+  if (!SE) return '';
+  if (SE.failed) return '<p class="health bad">The last email count did not finish. The numbers below may be out of date. Please tell ' + esc(CFG.ADMIN_NAME) + '.</p>';
+  if (SE.stale) return '<p class="health bad">No successful email count in the last ' + EMAIL_CFG.STALE_HOURS + ' hours' + (SE.lastOkMs !== null ? ' (last: ' + esc(emDay(SE.lastOkMs)) + ', ' + esc(clock(SE.lastOkMs)) + ')' : '') + '. Please tell ' + esc(CFG.ADMIN_NAME) + '.</p>';
+  return '<p class="health">✓ Up to date. Last email count: ' + esc(dayText(SE.lastOkMs)) + ', ' + esc(clock(SE.lastOkMs)) + '.</p>';
+}
+
+function emailOverview(SE) {
+  if (!SE) return msg('Email enquiries', ERR_E ? 'The email numbers could not be loaded.' : 'Loading…');
+  const m = SE.main;
+  const card = '<section class="card">' + cardHead('Email enquiries', TAG_E + ' · HELLO mailbox · ' + esc(SE.p.title), ['email', 'Email Data']) +
+    '<div class="kpis">' +
+    kpi({ label: 'Today so far', value: SE.today ? num(SE.today.total) : '0', sub: SE.today ? (SE.today.updatedMs !== null ? 'at ' + esc(clock(SE.today.updatedMs)) : 'counted today') : 'no count yet today' }) +
+    kpi({ label: 'Yesterday', value: SE.yesterday ? num(SE.yesterday.total) : '–', sub: SE.yesterday ? 'PostCo ' + num(SE.yesterday.postco) : 'not counted' }) +
+    kpi({ label: 'This period', value: num(m.total), sub: m.perDay !== null ? Math.round(m.perDay * 10) / 10 + ' a day' : '', cmp: SE.canCompare ? esc(SE.p.compareText) + ': ' + num(SE.cmp.total) : '' }) +
+    kpi({ label: 'PostCo returns', value: num(m.postco), sub: 'counted separately' }) + '</div>' + emHealth(SE) + '</section>';
+  const cats = SE.catRows.length ? '<section class="card">' + cardHead('What emails are about', TAG_E + ' · ' + num(m.cats.total) + ' enquiries', ['email', 'All categories']) +
+    rankBars(SE.catRows.map(r => ({ name: r.name, n: r.n, p: m.cats.total ? pct(r.n, m.cats.total) : '', vs: SE.canCompare ? 'was ' + num(r.was) : '' }))) +
+    '<p class="def">Sorted by keywords, so a guide, not exact.' + (SE.canCompare ? ' "was" = ' + esc(SE.p.compareText) + '.' : '') + '</p></section>' : msg('What emails are about', 'No email categories in this period yet.');
+  return card + cats;
+}
+
+/* Email Data tab filters. Kept while the page refreshes; Reset clears them. */
+const EMF_DEFAULT = { q: '', cat: '', days: 'all', min: '', postco: false, contact: false, sort: 'newest' };
+const EML_DEFAULT = { q: '', cat: '', counted: '', day: '' };
+let EMF = Object.assign({}, EMF_DEFAULT), EML = Object.assign({}, EML_DEFAULT);
+const opt = (v, t, cur) => '<option value="' + esc(v) + '"' + (String(cur) === String(v) ? ' selected' : '') + '>' + esc(t) + '</option>';
+
+function partE(SE) {
+  const head = pageHead(SRC_E, 'Customer emails to the HELLO mailbox, counted automatically about 3 times a day. One enquiry = one email conversation with at least one customer message that day.', 'Machino CS — Private Data · ' + (READ_E && READ_E.log ? 'counts + Email Log (switched on by the owner)' : 'counts only, no customer details'));
+  if (!SE) return head + msg('Summary', ERR_E ? 'The email numbers could not be loaded. The other tabs are still correct.' : 'Loading the email numbers…');
+  const m = SE.main, c = SE.cmp;
+  const status = SE.failed || SE.stale ? '<div class="status warn" role="status"><span class="ico" aria-hidden="true">!</span><div>' + emHealth(SE) + '</div></div>'
+    : '<div class="status ok" role="status"><span class="ico" aria-hidden="true">✓</span><p class="st-h">Email numbers are up to date (last count ' + esc(dayText(SE.lastOkMs)) + ', ' + esc(clock(SE.lastOkMs)) + ').</p></div>';
+  if (!m.days) return head + status + msg('Summary', 'No email days in this period. Email counting started on ' + (SE.firstMs !== null ? esc(emDay(SE.firstMs)) : 'a later date') + '. Pick another period at the top.') + emailLogCard();
+
+  const s1 = '<section class="card">' + cardHead('Summary', TAG_E + ' · ' + esc(SE.p.title)) + '<div class="kpis">' +
+    kpi({ label: 'Email enquiries', value: num(m.total), sub: m.perDay !== null ? Math.round(m.perDay * 10) / 10 + ' a day' + (m.includesToday ? ' (finished days)' : '') : '', cmp: SE.canCompare ? esc(SE.p.compareText) + ': ' + num(c.total) : '', def: m.includesToday ? 'Includes today so far.' : '' }) +
+    kpi({ label: 'Today so far', value: SE.today ? num(SE.today.total) : '0', sub: SE.today ? (SE.today.updatedMs !== null ? 'at ' + esc(clock(SE.today.updatedMs)) : 'counted today') : 'no count yet today' }) +
+    kpi({ label: 'PostCo return requests', value: num(m.postco), sub: 'not inside the email enquiries', cmp: SE.canCompare ? esc(SE.p.compareText) + ': ' + num(c.postco) : '' }) +
+    kpi({ label: 'Of which: contact form', value: num(m.contact), sub: 'website contact form (Shopify)' }) + '</div></section>';
+
+  const f = EMF;
+  const filters = '<section class="card">' + cardHead('Filter and search', 'Works on the days of the period chosen at the top') +
+    '<form class="emf" id="em-filters" onsubmit="return false" role="search">' +
+    '<div class="f grow"><label for="em-q">Search</label><input type="search" id="em-q" placeholder="e.g. 21 Oct, Monday, Return" value="' + esc(f.q) + '" autocomplete="off"></div>' +
+    '<div class="f"><label for="em-cat">Category</label><select id="em-cat">' + opt('', 'All categories', f.cat) + EMAIL_CFG.CATEGORIES.map(([k, name]) => opt(k, name, f.cat)).join('') + '</select></div>' +
+    '<div class="f"><label for="em-days">Days</label><select id="em-days">' + opt('all', 'Every day', f.days) + opt('weekday', 'Weekdays (Mon–Fri)', f.days) + opt('weekend', 'Weekends (Sat–Sun)', f.days) + '</select></div>' +
+    '<div class="f small"><label for="em-min">At least</label><input type="number" min="0" step="1" id="em-min" placeholder="0" value="' + esc(f.min) + '"></div>' +
+    '<div class="f"><label for="em-sort">Sort</label><select id="em-sort">' + opt('newest', 'Newest first', f.sort) + opt('oldest', 'Oldest first', f.sort) + opt('most', 'Most enquiries', f.sort) + opt('fewest', 'Fewest enquiries', f.sort) + '</select></div>' +
+    '<div class="checks"><label class="chk"><input type="checkbox" id="em-postco"' + (f.postco ? ' checked' : '') + '> Has PostCo returns</label>' +
+    '<label class="chk"><input type="checkbox" id="em-contact"' + (f.contact ? ' checked' : '') + '> Has contact-form messages</label></div>' +
+    '<button type="button" class="btn ghost" id="em-reset">Reset filters</button></form>' +
+    '<p class="foot" id="em-count" aria-live="polite"></p></section>';
+
+  const tot = m.cats.total;
+  const s3 = '<section class="card">' + cardHead('What emails are about', TAG_E + ' · ' + num(tot) + ' enquiries · whole period') +
+    (SE.catRows.length ? '<div class="tw"><table class="topics"><thead><tr><th>Category</th><th class="num">Enquiries</th><th class="hide-sm"><span class="sr">Bar</span></th>' + (SE.canCompare ? '<th class="num hide-sm">' + esc(SE.p.compareText) + '</th>' : '') + '</tr></thead><tbody>' +
+      SE.catRows.map(r => '<tr><td><button type="button" class="linkish" data-emcat="' + esc(r.key) + '" title="Show only ' + esc(r.name) + ' in the filter">' + esc(r.name) + '</button></td><td class="num"><b>' + np(r.n, tot) + '</b></td><td class="barcell hide-sm"><div class="bar" style="width:' + (100 * r.n / Math.max(1, ...SE.catRows.map(x => x.n))) + '%;background:var(--accent)"></div></td>' + (SE.canCompare ? '<td class="num muted hide-sm">' + num(r.was) + '</td>' : '') + '</tr>').join('') + '</tbody></table></div>' +
+      '<p class="def">Click a category to filter by it. Each enquiry gets one category from keywords in its subject and first lines (English and Malay). ' + (m.cats.unclear ? num(m.cats.unclear) + ' of ' + num(tot) + ' had no clear keywords.' : '') + ' A guide, not exact.</p>'
+      : '<p class="muted">No email categories in this period yet.</p>') + '</section>';
+
+  return head + status + s1 + filters + '<div id="em-results"></div>' + s3 + emailLogCard();
+}
+
+/** The filtered chart + day table. Re-drawn on every filter change without rebuilding the rest of the page. */
+function emailResultsHtml(SE, F) {
+  const label = F.label;
+  const chart = '<section class="card">' + cardHead(label + ' per day', TAG_E + (EMF.cat ? ' · category filter on' : '')) +
+    legend([{ c: 'accent', t: esc(label) + ' <b>' + num(F.n) + '</b>' }].concat(EMF.cat ? [] : [{ c: 'person', t: 'PostCo return requests <b>' + num(F.postco) + '</b>' }])) +
+    '<div class="chart"><canvas class="js-email" id="cEmail" role="img" aria-label="' + esc(label) + ' per day"></canvas></div><p class="nochart muted"></p></section>';
+  const table = '<section class="card">' + cardHead('Day by day', TAG_E + ' · ' + F.rows.length + ' of ' + F.of + ' days') +
+    (F.rows.length ? '<div class="tw"><table><thead><tr><th>Day</th><th class="num">' + esc(label) + '</th>' + (EMF.cat ? '<th class="num">All email enquiries</th>' : '') + '<th class="num">PostCo</th><th class="num">Contact form</th><th class="hide-sm">Biggest category</th><th class="num hide-sm">Last counted</th></tr></thead><tbody>' +
+      F.rows.map(d => '<tr><td><b>' + esc(DAYS[d.dow].slice(0, 3) + ' ' + emDay(d.ms)) + '</b>' + (d.iso === toIso(Date.now()) ? ' <span class="muted">(so far)</span>' : '') + '</td><td class="num"><b>' + num(d.n) + '</b></td>' + (EMF.cat ? '<td class="num">' + num(d.total) + '</td>' : '') +
+        '<td class="num">' + num(d.postco) + '</td><td class="num">' + num(d.contact) + '</td><td class="muted hide-sm">' + esc(d.top || '–') + '</td><td class="num muted hide-sm">' + (d.updatedMs !== null ? esc(dayText(d.updatedMs) + ', ' + clock(d.updatedMs)) : '–') + '</td></tr>').join('') +
+      '</tbody><tfoot><tr><td><b>Shown days</b></td><td class="num"><b>' + num(F.n) + '</b></td>' + (EMF.cat ? '<td></td>' : '') + '<td class="num"><b>' + num(F.postco) + '</b></td><td class="num"><b>' + num(F.contact) + '</b></td><td class="hide-sm"></td><td class="hide-sm"></td></tr></tfoot></table></div>'
+      : '<p class="muted">No days match these filters. Try fewer filters or press Reset filters.</p>') +
+    '<p class="def">Customer names, addresses and subjects stay in the private sheet' + (READ_E && READ_E.log ? ' (or in the Email Log below)' : '') + '.</p></section>';
+  return '<div class="cols c21">' + chart + table + '</div>' + emailListHtml(F);
+}
+
+/** Email Log search: only shown when the Dashboard API owner switched SHOW_EMAIL_LOG on (customer names, addresses, subjects). */
+function emailLogCard() {
+  const log = READ_E && READ_E.log; if (!log) return '';
+  const days = uniq(log.map(r => r.iso)).sort().reverse();
+  const f = EML;
+  return '<section class="card">' + cardHead('Email Log (last ' + days.length + ' days)', 'Every email received, with the decision. Private: customer details', null, '(Shown because the owner switched it on in the Dashboard API)') +
+    '<form class="emf" id="eml-filters" onsubmit="return false" role="search">' +
+    '<div class="f grow"><label for="eml-q">Search</label><input type="search" id="eml-q" placeholder="Name, email, subject, order no., keyword" value="' + esc(f.q) + '" autocomplete="off"></div>' +
+    '<div class="f"><label for="eml-day">Day</label><select id="eml-day">' + opt('', 'All days', f.day) + days.map(d => opt(d, emDay(isoDay(d)), f.day)).join('') + '</select></div>' +
+    '<div class="f"><label for="eml-cat">Category</label><select id="eml-cat">' + opt('', 'All', f.cat) + ['Defect', 'Order', 'Return', 'Sizing', 'Store', 'Other'].map(x => opt(x, x, f.cat)).join('') + '</select></div>' +
+    '<div class="f"><label for="eml-counted">Counted?</label><select id="eml-counted">' + opt('', 'All', f.counted) + opt('Yes', 'Yes (customer enquiry)', f.counted) + opt('No', 'No (left out)', f.counted) + opt('Separate', 'Separate (PostCo)', f.counted) + '</select></div>' +
+    '<button type="button" class="btn ghost" id="eml-reset">Reset</button></form><div id="eml-results"></div></section>';
+}
+
+/** One compact, scrollable table of Email Log rows. full = also the "Counted?" and "Why" columns. Every value is escaped; only Gmail links are made clickable. */
+function emailRowsTable(rows, full) {
+  const link = u => /^https:\/\/mail\.google\.com\//.test(String(u || '')) ? '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">Open ↗</a>' : '';
+  return '<div class="tw scrollbox compact"><table><thead><tr><th>When</th><th>From</th><th>Subject</th><th>Order no.</th><th>Category</th>' + (full ? '<th>Counted?</th><th class="hide-sm">Why</th>' : '') + '<th>Gmail</th></tr></thead><tbody>' +
+    rows.map(r => '<tr><td class="nowrap">' + esc(dayText(isoDay(r.iso))) + ' ' + esc(r.time) + '</td><td><b>' + esc(r.from || '–') + '</b><br><span class="muted">' + esc(r.address || '') + '</span></td><td>' + esc(r.subject || '') + '</td>' +
+      '<td class="nowrap">' + esc(r.order || '–') + '</td><td>' + esc(r.category || '–') + '</td>' + (full ? '<td><b>' + esc(r.counted || '') + '</b></td><td class="muted hide-sm">' + esc(r.why || '') + '</td>' : '') + '<td>' + link(r.link) + '</td></tr>').join('') +
+    '</tbody></table></div>';
+}
+
+/** Email Log category words for each category key (the Email Log stores the short word, e.g. "Return (also Store)"). */
+const EM_SHORT = { DEFECT: 'Defect', ORDER: 'Order', RETURN: 'Return', SIZING: 'Sizing', STORE: 'Store', OTHER: 'Other' };
+
+/** The customer emails behind the filtered days (and category): sender, address, subject, order no., Gmail link. Needs SHOW_EMAIL_LOG. */
+function emailListHtml(F) {
+  const title = EMF.cat ? 'Emails: ' + F.label : 'Customer emails in the shown days';
+  const log = READ_E && READ_E.log;
+  if (!log) return '<section class="card">' + cardHead(title, TAG_E) + '<p class="muted">To see each email here (sender, email address, order number and a Gmail link), the owner must switch on <b>SHOW_EMAIL_LOG</b> in the MCS Dashboard API settings. Until then customer details stay hidden.</p></section>';
+  const days = new Set(F.rows.map(d => d.iso));
+  const rows = filterEmailLog(log, { cat: EMF.cat ? EM_SHORT[EMF.cat] : '', counted: 'Yes' }).filter(r => days.has(r.iso));
+  const shown = rows.slice(0, EMAIL_CFG.LOG_SHOW_MAX);
+  return '<section class="card">' + cardHead(title + ' (' + num(rows.length) + ')', TAG_E + ' · counted customer emails · newest first', null, '(Gmail links open in the HELLO mailbox)') +
+    (shown.length ? emailRowsTable(shown, false) + (rows.length > shown.length ? '<p class="foot">Showing the newest ' + shown.length + ' of ' + num(rows.length) + '. Narrow the filters to see the rest.</p>' : '')
+      : '<p class="muted">No customer emails for these days' + (EMF.cat ? ' in this category' : '') + '. The detail list covers the last ' + uniq(log.map(r => r.iso)).length + ' days with email.</p>') + '</section>';
+}
+
+function emailLogResultsHtml() {
+  const all = (READ_E && READ_E.log) || []; const rows = filterEmailLog(all, EML); const shown = rows.slice(0, EMAIL_CFG.LOG_SHOW_MAX);
+  return '<p class="foot">' + (rows.length > shown.length ? 'Showing the newest ' + shown.length + ' of ' + num(rows.length) + ' matching emails. Search to narrow down.' : num(rows.length) + ' of ' + num(all.length) + ' emails match.') + '</p>' +
+    (shown.length ? emailRowsTable(shown, true) : '<p class="muted">No emails match.</p>');
+}
+
+/** Re-draws the filtered parts of the Email Data tab (and only its chart). */
+function renderEmailResults(quiet) {
+  const SE = LAST && LAST.SE; const box = $('#em-results');
+  if (box && SE && READ_E) {
+    const F = filterEmailDays(SE, READ_E, EMF);
+    CHARTS = CHARTS.filter(ch => { if (ch.canvas && ch.canvas.id === 'cEmail') { ch.destroy(); return false; } return true; });
+    box.innerHTML = emailResultsHtml(SE, F);
+    const active = Object.keys(EMF_DEFAULT).filter(k => EMF[k] !== EMF_DEFAULT[k] && k !== 'sort').length;
+    $('#em-count').textContent = 'Showing ' + F.rows.length + ' of ' + F.of + ' days · ' + num(F.n) + ' ' + F.label.toLowerCase() + (active ? ' · ' + active + ' filter' + (active === 1 ? '' : 's') + ' on' : '');
+    const el = $('#cEmail');
+    if (el && window.Chart) CHARTS.push(new Chart(el, emailChartConfig(SE, quiet, F)));
+    else if (el && !window.Chart) { el.parentNode.style.display = 'none'; box.querySelector('.nochart').textContent = 'The chart could not load. The table is still correct.'; }
+  }
+  const lb = $('#eml-results'); if (lb) lb.innerHTML = emailLogResultsHtml();
 }
 
 // ------------------------------------------------------------ Daily Log (SleekFlow data)
 function partA(SA) {
   const up = READ_A && READ_A.lastMs !== null ? ' · filled up to ' + dayText(READ_A.lastMs) + ' ' + wall(READ_A.lastMs).y : '';
-  const head = pageHead(SRC_A, 'All channels: every customer who messaged us on WhatsApp, Instagram or TikTok, counted once a day, and who replied to them.', TAG_A + up);
+  const head = pageHead(SRC_A, EMAIL_IN_DAILY
+    ? 'All channels: every customer who messaged us on WhatsApp, Instagram, TikTok or email, counted once a day. WhatsApp, Instagram and TikTok come from SleekFlow; Email comes from the HELLO email counter (see the Email Data tab). "Who replied" covers the SleekFlow channels only.'
+    : 'All channels: every customer who messaged us on WhatsApp, Instagram or TikTok, counted once a day, and who replied to them.', TAG_A + up);
   if (!SA) return head + msg('Summary', ERR_A ? 'The ' + SRC_A + ' could not be loaded. The ' + SRC_B + ' is still correct.' : READ_A ? 'No Daily Log days yet.' : 'Loading the Daily Log…');
   const m = SA.main, c = SA.cmp;
   if (!m.days) return head + msg('Summary', 'No Daily Log days in this period. It started on ' + esc(dayText(READ_A.firstMs)) + ' ' + wall(READ_A.firstMs).y + ' and is filled up to ' + esc(dayText(READ_A.lastMs)) + ' ' + wall(READ_A.lastMs).y + '.');
@@ -1537,6 +1988,22 @@ function drawChart(SA, quiet) {
   bels.forEach(el => { const cfg = botChartConfig(el.dataset.kind, quiet); if (cfg) CHARTS.push(new Chart(el, cfg)); });
 }
 
+/** Email enquiries and PostCo per day across the chosen period. A day with no count yet is a gap, never a false 0. */
+function emailChartConfig(SE, quiet, F) {
+  const P = SE.p; const end = Math.min(P.main.end, P.today.end); const by = {}; F.rows.forEach(d => { by[d.iso] = d; });
+  const days = []; for (let ms = P.main.start; ms < end; ms += DAY) days.push(toIso(ms));
+  const ds = (label, k, col) => ({ label, data: days.map(i => (by[i] ? by[i][k] : null)), backgroundColor: css('--' + col), borderRadius: { topLeft: 4, topRight: 4 }, maxBarThickness: 28 });
+  return {
+    type: 'bar', data: { labels: days.map(i => dayText(isoDay(i))), datasets: [ds(F.label, 'n', 'accent')].concat(EMF.cat ? [] : [ds('PostCo return requests', 'postco', 'person')]) },
+    options: {
+      animation: quiet ? false : { duration: 300 }, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: css('--ink'), titleColor: css('--panel'), bodyColor: css('--panel'), cornerRadius: 8, padding: 10, boxPadding: 4,
+        callbacks: { label: x => ' ' + x.dataset.label + ': ' + (x.raw === null ? 'not counted' : x.raw) } } },
+      scales: { x: { grid: { display: false }, border: { display: false }, ticks: { autoSkip: true, maxRotation: 0 } }, y: { beginAtZero: true, border: { display: false }, grid: { color: css('--line') }, ticks: { precision: 0 } } },
+    },
+  };
+}
+
 /** Chart.js settings shared by the stacked WhatsApp FAQ charts. */
 function botChartConfig(kind, quiet) {
   const V = BOTVIZ; if (!V) return null;
@@ -1611,6 +2078,28 @@ $('#period').addEventListener('change', () => {
 $('#from').addEventListener('change', applyDates);
 $('#to').addEventListener('change', applyDates);
 $('#refresh').addEventListener('click', () => load(true));
+$('#logout').addEventListener('click', () => { session.clear(); $('#logout').hidden = true; showLogin('You are logged out.'); });
+$('#app').addEventListener('submit', e => { if (e.target && e.target.id === 'login-form') { e.preventDefault(); submitLogin(e.target); } });
+/* Email Data filters: every change re-draws only the filtered results (typing in a search box waits a moment). */
+const EMF_IDS = { 'em-q': 'q', 'em-cat': 'cat', 'em-days': 'days', 'em-min': 'min', 'em-sort': 'sort', 'em-postco': 'postco', 'em-contact': 'contact' };
+const EML_IDS = { 'eml-q': 'q', 'eml-cat': 'cat', 'eml-counted': 'counted', 'eml-day': 'day' };
+let EM_TIMER = null;
+function onEmailFilter(e) {
+  const t = e.target; if (!t || !t.id) return;
+  const map = EMF_IDS[t.id] ? [EMF, EMF_IDS[t.id]] : EML_IDS[t.id] ? [EML, EML_IDS[t.id]] : null; if (!map) return;
+  map[0][map[1]] = t.type === 'checkbox' ? t.checked : t.value;
+  clearTimeout(EM_TIMER);
+  EM_TIMER = setTimeout(() => renderEmailResults(true), t.type === 'search' || t.type === 'number' ? 200 : 0);
+}
+$('#app').addEventListener('input', onEmailFilter);
+$('#app').addEventListener('change', onEmailFilter);
+$('#app').addEventListener('click', e => {
+  const t = e.target;
+  if (t.closest('#em-reset')) { EMF = Object.assign({}, EMF_DEFAULT); render(true); return; }
+  if (t.closest('#eml-reset')) { EML = Object.assign({}, EML_DEFAULT); render(true); return; }
+  const c = t.closest('[data-emcat]');
+  if (c) { EMF.cat = c.dataset.emcat; const sel = $('#em-cat'); if (sel) sel.value = EMF.cat; renderEmailResults(true); const f = $('#em-filters'); if (f && f.scrollIntoView) f.scrollIntoView({ block: 'nearest' }); }
+});
 $('#print').addEventListener('click', () => window.print());
 $('#theme').addEventListener('click', () => {
   const next = currentTheme() === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', next); store('theme', next); themeLabel(); render(true);
@@ -1637,10 +2126,11 @@ window.addEventListener('beforeprint', () => { document.querySelectorAll('.tabpa
 window.addEventListener('afterprint', () => { document.querySelectorAll('details').forEach(d => { d.open = false; }); setTab(TAB); });
 (function init() {
   const t = store('theme'); if (t) document.documentElement.setAttribute('data-theme', t); themeLabel();
+  if (apiMode()) { $('#tab-email').hidden = false; if (session.token()) $('#logout').hidden = false; }
   TAB = tabFromHash(); setTab(TAB);
   load(true);
-  setInterval(() => { if (!document.hidden) load(false); }, CFG.REFRESH_MINUTES * 60000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && FETCHED_AT && Date.now() - FETCHED_AT > CFG.REFRESH_MINUTES * 60000) load(false); });
+  setInterval(() => { if (!document.hidden && !LOCKED) load(false); }, CFG.REFRESH_MINUTES * 60000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !LOCKED && FETCHED_AT && Date.now() - FETCHED_AT > CFG.REFRESH_MINUTES * 60000) load(false); });
 })();
 </script>
 
