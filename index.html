@@ -1063,6 +1063,12 @@ function summarizeA(rd, nowMs, key, logStartMs) {
   const p = periodFor(key, nowMs, logStartMs);
   const lastEnd = rd.days.length ? rd.lastMs + DAY : 0;
   const mainEnd = Math.min(p.main.end, lastEnd);
+  // 22 Oct accuracy review: the Daily Log has no row for today until the next morning, so "this month" may hold fewer days
+  // than its comparison window (e.g. 1–21 Oct of data vs 1–22 Sep). Compare the same number of days.
+  if (mainEnd > p.main.start && mainEnd < p.main.end && p.compare.end - p.compare.start > mainEnd - p.main.start) {
+    p.compare = { start: p.compare.start, end: p.compare.start + (mainEnd - p.main.start) };
+    p.compareText = rangeText(p.compare.start, p.compare.end, false);
+  }
   const inR = (s, e) => rd.days.filter(d => d.ms >= s && d.ms < e);
   const mainList = inR(p.main.start, mainEnd), cmpList = inR(p.compare.start, p.compare.end);
   const cmpExpected = Math.ceil((p.compare.end - p.compare.start) / DAY - 1e-9);
@@ -1918,19 +1924,44 @@ function saveAlerts() {
   return alertCall({ action: 'saveAlerts', settings: s }, 'Saved. ' + (s.recipients.length ? 'Warnings go to ' + s.recipients.length + (s.recipients.length === 1 ? ' person.' : ' people.') : 'Nobody will get warnings until you add someone.'));
 }
 
+/**
+ * The "Total enquiries" card, the same on the Overview and the Daily Log tab (22 Oct accuracy review):
+ *  - says it is the channels ADDED UP (a customer on two channels counts twice), not unique customers;
+ *  - says when Email is NOT inside the total (email numbers failed to load, or the period starts before email counting);
+ *  - compares like with like: if the earlier period has no email data, the comparison uses WhatsApp + Instagram + TikTok only.
+ */
+function totalEnqCard(SA, SE, extra) {
+  const m = SA.main, c = SA.cmp;
+  const emStart = READ_E && READ_E.days.length ? READ_E.days[0].ms : null;
+  const emOff = !READ_E;
+  const emPartMain = !emOff && emStart !== null && SA.p.main.start < emStart;
+  const emPartCmp = !emOff && emStart !== null && SA.p.compare.start < emStart;
+  let cmp = '';
+  if (SA.covered && c.perDay !== null) {
+    cmp = emPartCmp && !emPartMain
+      ? esc(SA.p.compareText) + ' (WhatsApp, Instagram, TikTok only: email counting started ' + esc(dayText(emStart)) + '): ' + num(c.enq - c.em) + ', now ' + num(m.enq - m.em)
+      : esc(SA.p.compareText) + ': ' + num(c.enq) + ' (' + Math.round(c.perDay) + ' a day)';
+  }
+  const def = emOff ? '<b>Email not included:</b> the email numbers did not load. WhatsApp + Instagram + TikTok only.'
+    : (emPartMain ? 'Email is only included from ' + esc(dayText(emStart)) + ' (when email counting started). ' : '') +
+      'WhatsApp + Instagram + TikTok + Email added up: a customer who used two channels counts twice. Up to the last full day in the Daily Log.';
+  return kpi(Object.assign({ label: 'Total enquiries', value: num(m.enq), sub: num(Math.round(m.perDay)) + ' a day', cmp: cmp, def: def }, extra || {}));
+}
+
 // ------------------------------------------------------------ Overview
 function overview(SA, SB, SE) {
   const okA = !!(SA && SA.main.days), okB = !!(SB && SB.main.chats);
   const cmpA = SA ? esc(SA.p.compareText) : '', cmpB = SB ? esc(SB.p.compareText) : '';
-  const notA = SA ? 'No days in this period.' : ERR_A ? 'The ' + SRC_A + ' could not be loaded.' : READ_A ? 'No Daily Log days yet.' : 'Loading…';
+  // 22 Oct: a period with only today (or later) is not 'empty': the Daily Log is filled each morning for the day before.
+  const notYet = SA && !SA.main.days && READ_A && READ_A.lastMs !== null && SA.p.main.start > READ_A.lastMs;
+  const notA = notYet ? 'Not filled in yet: WhatsApp, Instagram and TikTok for ' + esc(dayText(SA.p.main.start)) + (SA.p.main.end - SA.p.main.start > DAY ? ' onwards' : '') + ' arrive the next morning (the Daily Log is filled at about 8am for the day before). Email so far today is on the Email Data tab.'
+    : SA ? 'No days in this period.' : ERR_A ? 'The ' + SRC_A + ' could not be loaded.' : READ_A ? 'No Daily Log days yet.' : 'Loading…';
   const notB = SB ? 'No chats in this period.' : ERR_B ? 'The ' + SRC_B + ' could not be loaded.' : 'Loading…';
 
   // 1. Four numbers
   let k1;
   if (okA) {
-    const m = SA.main, c = SA.cmp, a = Math.round(m.perDay);
-    const cmp = SA.covered && c.perDay !== null ? cmpA + ': ' + num(c.enq) + ' (' + Math.round(c.perDay) + ' a day)' : '';
-    k1 = kpi({ label: 'Total enquiries', src: TAG_A, value: num(m.enq), sub: num(a) + ' a day', cmp });
+    k1 = totalEnqCard(SA, SE, { src: TAG_A });
   } else k1 = kpi({ label: 'Total enquiries', src: TAG_A, value: '–', sub: notA });
 
   let k2, k3, k4;
@@ -2290,7 +2321,7 @@ function partA(SA) {
     ['quiet', m.none, 'No reply from us (same day)', 'Nobody on our side replied that day.', c.none],
   ];
   let s1 = '<section class="card">' + cardHead('Summary', src);
-  s1 += '<div class="kpis">' + kpi({ label: 'Total enquiries', value: num(m.enq), sub: num(Math.round(m.perDay)) + ' a day', cmp: SA.covered && c.perDay !== null ? esc(SA.p.compareText) + ': ' + num(c.enq) + ' (' + Math.round(c.perDay) + ' a day)' : '', def: 'Customers who messaged us. One customer, one channel, one day = 1.' }) +
+  s1 += '<div class="kpis">' + totalEnqCard(SA, LAST && LAST.SE, { def: 'Customers who messaged us: one customer, one channel, one day = 1. ' + (READ_E ? 'WhatsApp + Instagram + TikTok + Email added up, so a customer on two channels counts twice.' : '<b>Email not included:</b> the email numbers did not load.') }) +
     three.map(x => kpi({ label: x[2], dot: x[0], value: m.who ? pct(x[1], m.who) : '–', sub: num(x[1]) + ' of ' + num(m.who), cmp: wasShare(x[4]), def: x[3] })).join('') + '</div>';
   if (m.who) s1 += splitBar(three, m.who, 'Who replied');
   if (m.reply && m.reply.n >= 3) s1 += '<div class="reply"><p class="main">Staff reply time: <b>' + m.reply.mid + ' min</b> <span class="muted">(typical day; half of days between ' + m.reply.lo + ' and ' + m.reply.hi + ' min)</span></p><p class="def">Clock time, nights and weekends included, same-day replies only. It shows how long customers wait, not any one person\'s speed.</p></div>';
