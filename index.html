@@ -379,8 +379,7 @@ td.nowrap { white-space: nowrap; }
 .al-rule legend { font-weight: 600; padding: 0 6px; }
 .al-eg { font-size: 13px; margin: 8px 0 0; }
 .al-on { margin: 4px 0 14px; display: inline-flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
-#al-to { font: inherit; font-size: 14px; color: var(--ink); background: var(--panel); border: 1px solid var(--line2); border-radius: 10px; padding: 8px 11px; width: 100%; box-sizing: border-box; resize: vertical; }
-#al-to:focus, .al-rule input:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
+.al-rule input:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
 .al-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
 .al-msg { padding: 10px 14px; border-radius: var(--r-md); margin: 0 0 14px; font-size: 14px; }
 .al-msg.good { background: var(--soft); }
@@ -391,6 +390,23 @@ td.nowrap { white-space: nowrap; }
 .al-res.muted { color: var(--muted); font-weight: 500; }
 .al-changes { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
 .al-status .oc-c { font-size: 14px; }
+.al-rule + .al-rule { margin-top: 14px; }
+.al-how { margin: 4px 0 6px; font-size: 14.5px; }
+.al-steps { margin: 0; padding-left: 20px; display: grid; gap: 10px; font-size: 14.5px; line-height: 1.6; }
+.al-num { font: inherit; font-size: 15px; font-weight: 600; width: 76px; padding: 4px 8px; margin: 0 2px; color: var(--ink); background: var(--panel); border: 1px solid var(--line2); border-radius: 8px; }
+.al-chips { list-style: none; margin: 4px 0 10px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.al-chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 4px 4px 12px; border-radius: 999px; background: var(--soft); border: 1px solid var(--line2); font-size: 14px; max-width: 100%; }
+.al-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.al-x { font: inherit; font-size: 16px; line-height: 1; width: 26px; height: 26px; border-radius: 999px; border: 0; background: none; color: var(--muted); cursor: pointer; flex: none; }
+.al-x:hover { background: var(--alert-bg); color: var(--alert); }
+.al-x:focus-visible { outline: 2px solid var(--focus); }
+.al-none { margin: 4px 0 10px; }
+.al-add { display: flex; gap: 8px; flex-wrap: wrap; }
+.al-add input { font: inherit; font-size: 14px; flex: 1 1 220px; min-width: 0; color: var(--ink); background: var(--panel); border: 1px solid var(--line2); border-radius: 10px; padding: 8px 11px; }
+.al-add input:focus, .al-num:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
+.al-unsaved { margin: 12px 0 0; font-size: 14px; font-weight: 600; color: var(--alert); }
+.btn.primary { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.btn.primary:hover { background: var(--accent); }
 .health { font-size: 13px; color: var(--muted); margin-top: 10px; }
 .health.bad { color: var(--alert); font-weight: 600; }
 </style>
@@ -990,7 +1006,7 @@ const EMAIL_CFG = {
   RUNS: { at: 'Run at', date: 'Date', note: 'Note' },
   // Email Log: customer detail. Only arrives when the Dashboard API owner switched SHOW_EMAIL_LOG on.
   LOG: { date: 'Date', time: 'Time', from: 'From', address: 'Email', subject: 'Subject', category: 'Category', keywords: 'Keywords', order: 'Order No', link: 'Link', why: 'Why', counted: 'In the daily email number? (Yes / No / Separate = PostCo)' },
-  STALE_HOURS: 16,             // runs at about 9am, 1pm and 6pm; the longest normal gap is 6pm → 9am (15 h)
+  STALE_HOURS: 16,             // runs at about 9am, 11am, 3pm and 7pm; the longest normal gap is 7pm → 9am (14 h)
   LOG_SHOW_MAX: 100,           // Email Log rows shown at once (search to narrow down)
   // Amani 21 Oct: promotions, newsletters and automatic mail are not shown in the Email Log (they were never counted).
   LOG_HIDE: /gmail promotions|company \/ platform, not a customer|automatic email/i,
@@ -1271,7 +1287,7 @@ function showLogin(message) {
   LOCKED = true; document.body.classList.add('locked');
   CHARTS.forEach(c => c.destroy()); CHARTS = [];
   READ_A = READ_B = READ_E = null; TEXT_A = TEXT_B = TEXT_E = null; ERR_A = ERR_B = ERR_E = null; RENDERED = false; LAST = null; FETCHED_AT = null;
-  ALERTS_TODAY = []; ALERT_STATE = null; ALERT_MSG = null;
+  ALERTS_TODAY = []; ALERT_STATE = null; ALERT_MSG = null; AL_DRAFT = null;
   $('#period-title').textContent = ''; $('#morning').textContent = ''; $('#meta').textContent = 'Private report. Please log in to see the numbers.'; $('#notices').innerHTML = '';
   $('#app').innerHTML = '<section class="card login">' + cardHead('Log in') + '<p class="muted">This report is for the Machino team only. Enter the dashboard password.</p>' +
     '<form id="login-form" autocomplete="off"><label for="pw">Password</label><input type="password" id="pw" name="pw" autocomplete="current-password" required>' +
@@ -1486,7 +1502,7 @@ function render(quiet) {
     '<div class="cols c11"><section class="card">' + cardHead('The two sources') + '<ul class="oc">' +
     '<li>' + key('wa') + '<span class="oc-name">' + SRC_A + '</span><span></span><span class="oc-c">All channels (WhatsApp, Instagram, TikTok). Counts customers once a day and who replied to them. Filled every morning for yesterday.</span></li>' +
     '<li>' + key('ok') + '<span class="oc-name">' + SRC_B + '</span><span></span><span class="oc-c">WhatsApp only. One row per chat with the FAQ menu: what the customer picked and how the chat ended. Instagram and TikTok have no FAQ menu.</span></li></ul>' +
-    (apiMode() ? '<ul class="oc"><li>' + key('accent') + '<span class="oc-name">' + SRC_E + '</span><span></span><span class="oc-c">Customer emails to the HELLO mailbox, counted automatically about 3 times a day (9am, 1pm, 6pm). PostCo return requests are counted separately.</span></li></ul>' : '') +
+    (apiMode() ? '<ul class="oc"><li>' + key('accent') + '<span class="oc-name">' + SRC_E + '</span><span></span><span class="oc-c">Customer emails to the HELLO mailbox, counted automatically about 4 times a day (9am, 11am, 3pm, 7pm). PostCo return requests are counted separately.</span></li></ul>' : '') +
     '<p class="foot">They measure different things, so no number on this page adds or divides one by the other.</p></section>' +
     '<section class="card">' + cardHead('How numbers are written') + '<ul class="oc">' +
     '<li><span></span><span class="oc-name">154 (28%)</span><span></span><span class="oc-c">The number first, then its share in brackets. The card or column title says what the share is out of.</span></li>' +
@@ -1568,20 +1584,30 @@ function alertsHtml() {
     '<li><span></span><span class="oc-name">Check times</span><span></span><span class="oc-c">' + esc((st.checkHours || []).map(amPm).join(', ')) + ' (Malaysia time). Automatic checks: ' + esc(checks) + '.</span></li>' +
     '<li><span></span><span class="oc-name">Warning emails</span><span></span><span class="oc-c">' + (st.emailReady === false ? 'Not switched on yet. IT allows the email permission first; until then nothing is sent (settings can already be saved).' : 'Ready.') + '</span></li>' +
     '<li><span></span><span class="oc-name">Email</span><span></span><span class="oc-c">Counted from the HELLO mailbox (PostCo returns left out). Needs the email counter to have run in the last 3 hours.</span></li>' +
-    '<li><span></span><span class="oc-name">SleekFlow</span><span></span><span class="oc-c">' + (st.sleekflowConnected ? 'Connected (read only).' : 'Not connected yet. IT adds the SleekFlow key.') + ' Learns its normal level from its own checks, so it shows "Still learning" for the first ' + esc(st.minDays || 5) + ' days.</span></li>' +
+    '<li><span></span><span class="oc-name">SleekFlow</span><span></span><span class="oc-c">' + (st.sleekflowConnected ? 'Connected (read only).' : 'Not connected yet. IT adds the SleekFlow key.') + (st.sleekflowFilledDays ? ' Normal level ready: ' + esc(st.sleekflowFilledDays) + ' past days filled from SleekFlow.' : ' Learns its normal level from its own checks, so it shows "Still learning" for the first ' + esc(st.minDays || 5) + ' days (IT can fill the past 2 weeks at once).') + '</span></li>' +
     '</ul></section>';
-  const rule = (k, label) => '<fieldset class="al-rule"><legend>' + label + '</legend><div class="emf">' +
-    '<div class="f small"><label for="al-' + k + '-ratio">Times the normal</label><input type="number" id="al-' + k + '-ratio" min="1.1" max="10" step="0.1" value="' + esc(s[k].ratio) + '"></div>' +
-    '<div class="f small"><label for="al-' + k + '-extra">At least this many more</label><input type="number" id="al-' + k + '-extra" min="0" max="1000" step="1" value="' + esc(s[k].minExtra) + '"></div></div>' +
-    '<p class="muted al-eg">Warns when today is at least <b>' + esc(s[k].ratio) + '×</b> the normal <b>and</b> at least <b>' + esc(s[k].minExtra) + '</b> more. Example: normal 4 → warns from ' + Math.ceil(Math.max(s[k].ratio * 4, 4 + s[k].minExtra)) + '.</p></fieldset>';
+  const D = alDraft(s);
+  const warnFrom = n => Math.ceil(Math.max(D.ratio * n, n + D.minExtra));
+  const differ = s.email.ratio !== s.sleekflow.ratio || s.email.minExtra !== s.sleekflow.minExtra;
+  const chips = D.recipients.length ? '<ul class="al-chips" aria-label="People who get the warning">' + D.recipients.map(a => '<li class="al-chip"><span>' + esc(a) + '</span>' +
+      '<button type="button" class="al-x" data-al-remove="' + esc(a) + '" aria-label="Remove ' + esc(a) + '" title="Remove">×</button></li>').join('') + '</ul>'
+    : '<p class="muted al-none">Nobody yet. Add at least one address.</p>';
   const form = '<section class="card">' + cardHead('Settings', null, null, 'Only people with the dashboard password can change these. Every change is listed below.') +
     '<form id="alerts-form" autocomplete="off" novalidate>' +
-    '<label class="chk al-on"><input type="checkbox" id="al-enabled"' + (s.enabled ? ' checked' : '') + '> Send warning emails</label>' +
-    '<div class="cols c11">' + rule('email', 'Email') + rule('sleekflow', 'SleekFlow (WhatsApp, Instagram, TikTok)') + '</div>' +
-    '<div class="emf"><div class="f grow"><label for="al-to">Send warnings to (company addresses only, one per line or separated by commas)</label>' +
-    '<textarea id="al-to" rows="3" spellcheck="false">' + esc(s.recipients.join('\n')) + '</textarea></div></div>' +
-    '<div class="al-actions"><button type="submit" class="btn" id="al-save"' + (ALERT_BUSY ? ' disabled' : '') + '>Save settings</button>' +
-    '<button type="button" class="btn ghost" id="al-test"' + (ALERT_BUSY || !s.recipients.length || st.emailReady === false ? ' disabled' : '') + '>Send a test warning</button></div></form></section>';
+    '<label class="chk al-on"><input type="checkbox" id="al-enabled"' + (D.enabled ? ' checked' : '') + '> Send warning emails</label>' +
+    '<fieldset class="al-rule"><legend>When to warn (Email and SleekFlow use the same rule)</legend>' +
+    '<p class="al-how">A warning is sent when <b>both</b> are true:</p><ol class="al-steps">' +
+    '<li><label for="al-ratio"><b>Times the normal:</b> today is at least</label> <input type="number" id="al-ratio" class="al-num" min="1.1" max="10" step="0.1" value="' + esc(D.ratio) + '"> × the usual number for this time of day. <span class="muted">(2 = double)</span></li>' +
+    '<li><label for="al-extra"><b>At least this many more:</b> and today is at least</label> <input type="number" id="al-extra" class="al-num" min="0" max="1000" step="1" value="' + esc(D.minExtra) + '"> more than usual. <span class="muted">This stops warnings on quiet days, e.g. usual 1, today 2 is double but only 1 more.</span></li></ol>' +
+    '<p class="muted al-eg">With these numbers: usual 4 → warns from <b>' + warnFrom(4) + '</b> · usual 10 → from <b>' + warnFrom(10) + '</b> · usual 30 → from <b>' + warnFrom(30) + '</b>.</p>' +
+    (differ ? '<p class="muted al-eg">Email and SleekFlow had different rules before. Saving uses this one rule for both.</p>' : '') + '</fieldset>' +
+    '<fieldset class="al-rule al-who"><legend>Who gets the warning (' + D.recipients.length + ')</legend>' + chips +
+    '<div class="al-add"><label for="al-new" class="sr">Add an address</label><input type="email" id="al-new" placeholder="name@machino.com.my" autocomplete="off" spellcheck="false">' +
+    '<button type="button" class="btn" id="al-add-btn">Add</button></div>' +
+    '<p class="muted al-eg">Company addresses only (@' + esc(((st.allowedDomains) || ['machino.com.my']).join(', @')) + '). Up to 10 people.</p></fieldset>' +
+    (D.dirty ? '<p class="al-unsaved" role="status">You have changes that are not saved yet.</p>' : '') +
+    '<div class="al-actions"><button type="submit" class="btn' + (D.dirty ? ' primary' : '') + '" id="al-save"' + (ALERT_BUSY ? ' disabled' : '') + '>Save settings</button>' +
+    '<button type="button" class="btn ghost" id="al-test"' + (ALERT_BUSY || (!s.recipients.length && !D.dirty) || st.emailReady === false ? ' disabled' : '') + '>Send a test warning</button></div></form></section>';
   const hist = (S.history || []);
   const histCard = '<section class="card">' + cardHead('Recent checks', null, null, 'Newest first. Counts only: no customer details are stored or emailed.') +
     (hist.length ? '<div class="tw scrollbox compact"><table><thead><tr><th>Day</th><th>Check</th><th>Channel</th><th>Today so far</th><th>Normal</th><th>Result</th><th class="hide-sm">Email</th></tr></thead><tbody>' +
@@ -1601,7 +1627,7 @@ async function alertCall(body, okText) {
   try {
     const r = await api(Object.assign({ token: session.token() }, body));
     if (r && r.code === 'LOGIN_NEEDED') { session.clear(); showLogin('Your login has ended. Please log in again.'); return; }
-    if (r && r.ok && r.settings) ALERT_STATE = r;
+    if (r && r.ok && r.settings) { ALERT_STATE = r; AL_DRAFT = null; }   // saved or loaded settings become the new starting point
     ALERT_MSG = r && r.ok ? (okText ? { ok: true, text: typeof okText === 'function' ? okText(r) : okText } : null)
       : { ok: false, text: r && r.code === 'INVALID' ? r.errors.join(' ') : r && r.code === 'TOO_SOON' ? 'A test was just sent. Please wait ' + r.retryMinutes + ' minutes.' : r && r.code === 'NO_RECIPIENTS' ? 'Save at least one address first.' : r && r.code === 'EMAIL_NOT_READY' ? 'Warning emails are not switched on yet. Please tell IT.' : 'The data link answered ' + ((r && r.code) || 'with an error') + '. Please try again or tell IT.' };
   } catch (e) { ALERT_MSG = { ok: false, text: 'Could not reach the data link: ' + e.message }; }
@@ -1609,21 +1635,51 @@ async function alertCall(body, okText) {
 }
 const loadAlerts = () => alertCall({ action: 'alerts' });
 
+/* The settings form keeps unsaved edits here, so adding/removing a person (which redraws the card) never loses typed numbers. */
+let AL_DRAFT = null;
+function alDraft(s) {
+  if (!AL_DRAFT) AL_DRAFT = { enabled: s.enabled, ratio: s.email.ratio, minExtra: s.email.minExtra, recipients: s.recipients.slice(), dirty: false };
+  return AL_DRAFT;
+}
+function alDomains() { return (ALERT_STATE && ALERT_STATE.status && ALERT_STATE.status.allowedDomains) || ['machino.com.my']; }
+/** Copies what is typed in the form into the draft (numbers and the on/off box). */
+function alSyncDraft() {
+  if (!AL_DRAFT) return;
+  const v = id => { const el = $('#' + id); return el ? el.value : null; };
+  if (v('al-ratio') !== null) AL_DRAFT.ratio = Number(v('al-ratio'));
+  if (v('al-extra') !== null) AL_DRAFT.minExtra = Number(v('al-extra'));
+  if ($('#al-enabled')) AL_DRAFT.enabled = $('#al-enabled').checked;
+}
+
 function readAlertForm() {
-  const v = id => { const el = $('#' + id); return el ? el.value : ''; };
-  return {
-    enabled: !!($('#al-enabled') && $('#al-enabled').checked),
-    email: { ratio: Number(v('al-email-ratio')), minExtra: Number(v('al-email-extra')) },
-    sleekflow: { ratio: Number(v('al-sleekflow-ratio')), minExtra: Number(v('al-sleekflow-extra')) },
-    recipients: v('al-to').split(/[\s,;]+/).map(x => x.trim().toLowerCase()).filter(Boolean),
-  };
+  alSyncDraft();
+  const D = AL_DRAFT || { enabled: true, ratio: NaN, minExtra: NaN, recipients: [] };
+  const rule = { ratio: Number(D.ratio), minExtra: Number(D.minExtra) };
+  return { enabled: !!D.enabled, email: Object.assign({}, rule), sleekflow: Object.assign({}, rule), recipients: D.recipients.slice() };
+}
+
+/** "Add" button / Enter in the address box: checks the address, adds a bubble (saved with "Save settings"). */
+function alAddRecipient() {
+  const box = $('#al-new'); if (!box) return;
+  alSyncDraft();
+  const list = box.value.split(/[\s,;]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
+  if (!list.length) return;
+  const bad = alertFormProblems({ email: { ratio: 2, minExtra: 0 }, sleekflow: { ratio: 2, minExtra: 0 }, recipients: list }, alDomains());
+  if (bad.length) { ALERT_MSG = { ok: false, text: bad.join(' ') }; renderAlerts(); const nb = $('#al-new'); if (nb) { nb.value = box.value; nb.focus(); } return; }
+  list.forEach(a => { if (AL_DRAFT.recipients.indexOf(a) === -1) AL_DRAFT.recipients.push(a); });
+  if (AL_DRAFT.recipients.length > 10) { AL_DRAFT.recipients = AL_DRAFT.recipients.slice(0, 10); ALERT_MSG = { ok: false, text: 'At most 10 people.' }; } else ALERT_MSG = null;
+  AL_DRAFT.dirty = true; renderAlerts(); const nb = $('#al-new'); if (nb) nb.focus();
+}
+function alRemoveRecipient(a) {
+  alSyncDraft();
+  AL_DRAFT.recipients = AL_DRAFT.recipients.filter(x => x !== a); AL_DRAFT.dirty = true; ALERT_MSG = null; renderAlerts();
 }
 
 function saveAlerts() {
   const s = readAlertForm();
-  const bad = alertFormProblems(s, (ALERT_STATE && ALERT_STATE.status && ALERT_STATE.status.allowedDomains) || ['machino.com.my']);
-  if (bad.length) { ALERT_MSG = { ok: false, text: bad.join(' ') }; renderAlerts(); return; }
-  return alertCall({ action: 'saveAlerts', settings: s }, 'Saved.');
+  const bad = alertFormProblems(s, alDomains());
+  if (bad.length) { ALERT_MSG = { ok: false, text: bad.join(' ').replace(/(Email|SleekFlow): /g, '') }; renderAlerts(); return; }
+  return alertCall({ action: 'saveAlerts', settings: s }, 'Saved. ' + (s.recipients.length ? 'Warnings go to ' + s.recipients.length + (s.recipients.length === 1 ? ' person.' : ' people.') : 'Nobody will get warnings until you add someone.'));
 }
 
 // ------------------------------------------------------------ Overview
@@ -1723,7 +1779,7 @@ const EMAIL_DEFS = [
   ['PostCo return request', 'A return or exchange request made through the PostCo portal. Counted on its own, never inside the email enquiries.'],
   ['Contact form', 'A message from the website contact form (Shopify). It is a customer email, so it is counted inside the email enquiries and also shown on its own.'],
   ['Email category', 'What the email is about, from keywords in the subject and first lines (English and Malay). A guide, not exact: unclear ones go to Other / Unknown.'],
-  ['Today so far', 'Today\'s count up to the last automatic run (about 9am, 1pm and 6pm). It goes up during the day.'],
+  ['Today so far', 'Today\'s count up to the last automatic run (about 9am, 11am, 3pm and 7pm). It goes up during the day.'],
 ];
 const emDot = '<span class="key" style="background:var(--accent)"></span>';
 const emDay = ms => dayText(ms) + ' ' + wall(ms).y;
@@ -1756,7 +1812,7 @@ let EMF = Object.assign({}, EMF_DEFAULT), EML = Object.assign({}, EML_DEFAULT);
 const opt = (v, t, cur) => '<option value="' + esc(v) + '"' + (String(cur) === String(v) ? ' selected' : '') + '>' + esc(t) + '</option>';
 
 function partE(SE) {
-  const head = pageHead(SRC_E, 'Customer emails to the HELLO mailbox, counted automatically about 3 times a day. One enquiry = one email conversation with at least one customer message that day.', 'Machino CS — Private Data · ' + (READ_E && READ_E.log ? 'counts + Email Log (switched on by the owner)' : 'counts only, no customer details'));
+  const head = pageHead(SRC_E, 'Customer emails to the HELLO mailbox, counted automatically about 4 times a day. One enquiry = one email conversation with at least one customer message that day.', 'Machino CS — Private Data · ' + (READ_E && READ_E.log ? 'counts + Email Log (switched on by the owner)' : 'counts only, no customer details'));
   if (!SE) return head + msg('Summary', ERR_E ? 'The email numbers could not be loaded. The other tabs are still correct.' : 'Loading the email numbers…');
   const m = SE.main, c = SE.cmp;
   const status = SE.failed || SE.stale ? '<div class="status warn" role="status"><span class="ico" aria-hidden="true">!</span><div>' + emHealth(SE) + '</div></div>'
@@ -2221,9 +2277,18 @@ $('#app').addEventListener('submit', e => {
   if (e.target && e.target.id === 'alerts-form') { e.preventDefault(); saveAlerts(); }
 });
 $('#app').addEventListener('click', e => {
-  if (e.target.closest('#al-test')) alertCall({ action: 'testAlert' }, r => 'Test warning sent to ' + r.sentTo + ' address' + (r.sentTo === 1 ? '' : 'es') + '. Please check the inbox.');
+  if (e.target.closest('#al-test')) {
+    if (AL_DRAFT && AL_DRAFT.dirty) { ALERT_MSG = { ok: false, text: 'Please press "Save settings" first. The test goes to the saved list.' }; renderAlerts(); return; }
+    alertCall({ action: 'testAlert' }, r => 'Test warning sent to ' + r.sentTo + (r.sentTo === 1 ? ' person' : ' people') + '. Please check the inbox.');
+  }
   if (e.target.closest('#al-reload')) loadAlerts();
+  if (e.target.closest('#al-add-btn')) alAddRecipient();
+  const rm = e.target.closest('[data-al-remove]'); if (rm) alRemoveRecipient(rm.dataset.alRemove);
 });
+/* Alerts settings: typing a number or ticking the box marks the form as changed; Enter in the address box adds the person. */
+$('#app').addEventListener('input', e => { if (e.target && /^al-(ratio|extra|enabled)$/.test(e.target.id) && AL_DRAFT) { alSyncDraft(); AL_DRAFT.dirty = true; } });
+$('#app').addEventListener('change', e => { if (e.target && e.target.id === 'al-enabled' && AL_DRAFT) { alSyncDraft(); AL_DRAFT.dirty = true; } });
+$('#app').addEventListener('keydown', e => { if (e.target && e.target.id === 'al-new' && e.key === 'Enter') { e.preventDefault(); alAddRecipient(); } });
 /* Email Data filters: every change re-draws only the filtered results (typing in a search box waits a moment). */
 const EMF_IDS = { 'em-q': 'q', 'em-cat': 'cat', 'em-days': 'days', 'em-min': 'min', 'em-sort': 'sort', 'em-postco': 'postco', 'em-contact': 'contact' };
 const EML_IDS = { 'eml-q': 'q', 'eml-cat': 'cat', 'eml-counted': 'counted', 'eml-day': 'day' };
