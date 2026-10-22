@@ -469,7 +469,6 @@ td.nowrap { white-space: nowrap; }
 .em-sel { display: grid; gap: 4px; min-width: 140px; } .em-sel.small { min-width: 0; width: 96px; }
 .em-sel label { font-size: 12.5px; color: var(--muted); }
 .em-search input:focus, .em-sel input:focus, .em-sel select:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
-.em-more { margin-top: 12px; } .em-more > summary { cursor: pointer; font-size: 14px; font-weight: 600; color: var(--muted); width: max-content; }
 .em-more-in { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: flex-end; margin-top: 10px; }
 .em-more-in .chk { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; padding-bottom: 8px; }
 .em-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
@@ -495,6 +494,29 @@ td.nowrap { white-space: nowrap; }
 .em-how { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: 14px; }
 @media (max-width: 860px) { .em-stats { grid-template-columns: 1fr 1fr; } .em-trend { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .em-catlist li { grid-template-columns: 1fr 60px 40px 40px; } .em-catlist .em-cat-c { display: none; } .em-stat-v { font-size: 28px; } .em-sel { min-width: calc(50% - 6px); flex: 1 1 calc(50% - 6px); } }
+.em-bar { align-items: flex-end; }
+.em-search { position: relative; flex: 1 1 280px; }
+.em-search input { padding-left: 36px; padding-right: 34px; height: 40px; }
+.em-search input::-webkit-search-cancel-button { display: none; }
+.em-search-ico { position: absolute; left: 12px; bottom: 12px; color: var(--muted); display: inline-flex; pointer-events: none; }
+.em-clear { position: absolute; right: 6px; bottom: 6px; width: 28px; height: 28px; border: 0; border-radius: 999px; background: none; color: var(--muted); font: inherit; font-size: 18px; line-height: 1; cursor: pointer; }
+.em-clear:hover { background: var(--soft); color: var(--ink); } .em-clear[hidden] { display: none; }
+.em-sels { display: grid; grid-template-columns: repeat(3, minmax(130px, 1fr)); gap: 10px; flex: 2 1 420px; }
+.em-sels .em-sel { min-width: 0; }
+.em-sel select { width: 100%; height: 40px; }
+.em-more-btn { height: 40px; display: inline-flex; align-items: center; gap: 6px; }
+.em-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--ink); color: var(--panel); font-size: 12px; font-weight: 700; }
+.em-more-in[hidden] { display: none; }
+.em-more-in { padding: 12px 14px; border-radius: var(--r-md); background: var(--soft); margin-top: 12px; }
+.em-foot { align-items: center; }
+#em-count { font-weight: 600; color: var(--ink); }
+.em-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.em-chips:empty { display: none; }
+.em-chip { display: inline-flex; align-items: center; gap: 2px; padding: 3px 4px 3px 11px; border-radius: 999px; background: var(--soft); border: 1px solid var(--line2); font-size: 13px; }
+.em-chip-x { width: 22px; height: 22px; border: 0; border-radius: 999px; background: none; color: var(--muted); font: inherit; font-size: 15px; line-height: 1; cursor: pointer; }
+.em-chip-x:hover { background: var(--alert-bg); color: var(--alert); }
+.em-clear-all { font-size: 13px; font-weight: 600; margin-left: 4px; }
+@media (max-width: 760px) { .em-sels { grid-template-columns: 1fr 1fr; flex-basis: 100%; } .em-sels .em-sel:last-child { grid-column: 1 / -1; } .em-more-btn { width: 100%; justify-content: center; } .em-foot { flex-direction: column; align-items: flex-start; } }
 .em-days-t td.nowrap, .em-days-t .nowrap { white-space: nowrap; }
 .em-days-t .barcell { width: 28%; min-width: 60px; }
 .em-days .scrollbox { max-height: 460px; }
@@ -2021,6 +2043,7 @@ function emailOverview(SE) {
 
 /* Email Data tab filters. Kept while the page refreshes; Reset clears them. */
 const EMF_DEFAULT = { q: '', cat: '', days: 'all', min: '', postco: false, contact: false, sort: 'newest' };
+let EM_MORE_OPEN = false;   // the 'More filters' panel
 const EML_DEFAULT = { q: '', cat: '', counted: '', day: '', customersOnly: true };   // Amani 22 Oct: customers only by default
 let EMAIL_LOG_ON;                 // the saved Customer email details switch (from the data link: true / false)
 let EM_LOG_BUSY = false, EM_LOG_MSG = null;
@@ -2046,17 +2069,22 @@ function partE(SE) {
     stat('Contact form', num(m.contact), 'website form, inside the enquiries') + '</div>';
 
   const f = EMF;
-  const moreOn = !!(f.min || f.postco || f.contact);
+  const moreN = (f.min ? 1 : 0) + (f.postco ? 1 : 0) + (f.contact ? 1 : 0);
+  const moreOpen = EM_MORE_OPEN || moreN > 0;
+  // Filter bar (redesign 22 Oct): search with icon + clear, three dropdowns, "More filters" with a count, active-filter chips, result count.
   const filters = '<section class="card em-filter"><form id="em-filters" onsubmit="return false" role="search">' +
-    '<div class="em-bar"><div class="em-search"><label for="em-q" class="sr">Search days</label><input type="search" id="em-q" placeholder="Search days, e.g. 21 Oct, Monday, Return" value="' + esc(f.q) + '" autocomplete="off"></div>' +
-    '<div class="em-sel"><label for="em-cat">Category</label><select id="em-cat">' + opt('', 'All categories', f.cat) + EMAIL_CFG.CATEGORIES.map(([k, name]) => opt(k, name, f.cat)).join('') + '</select></div>' +
+    '<div class="em-bar"><div class="em-search"><span class="em-search-ico" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" stroke-width="1.8"/><path d="m11 11 3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>' +
+    '<label for="em-q" class="sr">Search days</label><input type="search" id="em-q" placeholder="Search days, e.g. 21 Oct, Monday, Return" value="' + esc(f.q) + '" autocomplete="off">' +
+    '<button type="button" class="em-clear" id="em-q-clear" aria-label="Clear search" title="Clear search"' + (f.q ? '' : ' hidden') + '>×</button></div>' +
+    '<div class="em-sels"><div class="em-sel"><label for="em-cat">Category</label><select id="em-cat">' + opt('', 'All categories', f.cat) + EMAIL_CFG.CATEGORIES.map(([k, name]) => opt(k, name, f.cat)).join('') + '</select></div>' +
     '<div class="em-sel"><label for="em-days">Days</label><select id="em-days">' + opt('all', 'Every day', f.days) + opt('weekday', 'Weekdays', f.days) + opt('weekend', 'Weekends', f.days) + '</select></div>' +
     '<div class="em-sel"><label for="em-sort">Sort</label><select id="em-sort">' + opt('newest', 'Newest first', f.sort) + opt('oldest', 'Oldest first', f.sort) + opt('most', 'Most enquiries', f.sort) + opt('fewest', 'Fewest enquiries', f.sort) + '</select></div></div>' +
-    '<details class="em-more" id="em-more"' + (moreOn ? ' open' : '') + '><summary>More filters</summary><div class="em-more-in">' +
-    '<div class="em-sel small"><label for="em-min">At least</label><input type="number" min="0" step="1" id="em-min" placeholder="0" value="' + esc(f.min) + '"></div>' +
+    '<button type="button" class="btn ghost em-more-btn" id="em-more-btn" aria-expanded="' + moreOpen + '" aria-controls="em-more-panel">More filters' + (moreN ? ' <span class="em-badge">' + moreN + '</span>' : '') + '</button></div>' +
+    '<div class="em-more-in" id="em-more-panel"' + (moreOpen ? '' : ' hidden') + '>' +
+    '<div class="em-sel small"><label for="em-min">At least (a day)</label><input type="number" min="0" step="1" id="em-min" placeholder="0" value="' + esc(f.min) + '"></div>' +
     '<label class="chk"><input type="checkbox" id="em-postco"' + (f.postco ? ' checked' : '') + '> Has PostCo returns</label>' +
-    '<label class="chk"><input type="checkbox" id="em-contact"' + (f.contact ? ' checked' : '') + '> Has contact-form messages</label></div></details>' +
-    '<div class="em-foot"><p id="em-count" aria-live="polite"></p><button type="button" class="btn ghost" id="em-reset">Reset filters</button></div></form></section>';
+    '<label class="chk"><input type="checkbox" id="em-contact"' + (f.contact ? ' checked' : '') + '> Has contact-form messages</label></div>' +
+    '<div class="em-foot"><p id="em-count" aria-live="polite"></p><div class="em-chips" id="em-chips"></div></div></form></section>';
 
   const tot = m.cats.total, maxCat = Math.max(1, ...SE.catRows.map(x => x.n));
   const cats = '<section class="card em-cats"><div class="em-sec-h"><h3>What emails are about</h3><p>' + num(tot) + ' enquiries in this period · click a category to filter</p></div>' +
@@ -2207,6 +2235,20 @@ function emailLogResultsHtml() {
     (shown.length ? emailRowsTable(shown, true) : '<p class="muted">No emails match.</p>');
 }
 
+/** The active filters as removable chips + Clear all (sort is not a filter, so it is not shown). */
+function emailChipsHtml() {
+  const f = EMF, list = [];
+  if (f.q) list.push(['q', 'Search: ' + f.q]);
+  if (f.cat) list.push(['cat', 'Category: ' + ((EMAIL_CFG.CATEGORIES.find(c => c[0] === f.cat) || [0, f.cat])[1])]);
+  if (f.days !== 'all') list.push(['days', f.days === 'weekday' ? 'Weekdays' : 'Weekends']);
+  if (f.min) list.push(['min', 'At least ' + f.min + ' a day']);
+  if (f.postco) list.push(['postco', 'Has PostCo']);
+  if (f.contact) list.push(['contact', 'Has contact form']);
+  if (!list.length) return '';
+  return list.map(c => '<span class="em-chip">' + esc(c[1]) + '<button type="button" class="em-chip-x" data-emf-clear="' + c[0] + '" aria-label="Remove filter ' + esc(c[1]) + '">×</button></span>').join('') +
+    '<button type="button" class="linkish em-clear-all" id="em-reset">Clear all</button>';
+}
+
 /** Re-draws the filtered parts of the Email Data tab (and only its chart). */
 function renderEmailResults(quiet) {
   const SE = LAST && LAST.SE; const box = $('#em-results');
@@ -2219,6 +2261,9 @@ function renderEmailResults(quiet) {
     const listBox = $('#em-list'); if (listBox) listBox.innerHTML = emailListHtml(F);
     const active = Object.keys(EMF_DEFAULT).filter(k => EMF[k] !== EMF_DEFAULT[k] && k !== 'sort').length;
     $('#em-count').textContent = 'Showing ' + F.rows.length + ' of ' + F.of + ' days · ' + num(F.n) + ' ' + F.label.toLowerCase() + (active ? ' · ' + active + ' filter' + (active === 1 ? '' : 's') + ' on' : '');
+    const chips = $('#em-chips'); if (chips) chips.innerHTML = emailChipsHtml();
+    const qc = $('#em-q-clear'); if (qc) qc.hidden = !EMF.q;
+    const mb = $('#em-more-btn'); if (mb) { const n = (EMF.min ? 1 : 0) + (EMF.postco ? 1 : 0) + (EMF.contact ? 1 : 0); mb.innerHTML = 'More filters' + (n ? ' <span class="em-badge">' + n + '</span>' : ''); }
     const el = $('#cEmail');
     if (el && window.Chart) CHARTS.push(new Chart(el, emailChartConfig(SE, quiet, F)));
     else if (el && !window.Chart) { el.parentNode.style.display = 'none'; box.querySelector('.nochart').textContent = 'The chart could not load. The Day by day table below is still correct.'; }
@@ -2612,6 +2657,10 @@ $('#app').addEventListener('change', onEmailFilter);
 $('#app').addEventListener('click', e => {
   const t = e.target;
   if (t.closest('#em-reset')) { EMF = Object.assign({}, EMF_DEFAULT); render(true); return; }
+  const chip = t.closest('[data-emf-clear]');
+  if (chip) { const k = chip.dataset.emfClear; EMF[k] = EMF_DEFAULT[k]; const id = Object.keys(EMF_IDS).find(x => EMF_IDS[x] === k); const el = id && $('#' + id); if (el) { if (el.type === 'checkbox') el.checked = !!EMF[k]; else el.value = EMF[k]; } render(true); return; }
+  if (t.closest('#em-q-clear')) { EMF.q = ''; const el = $('#em-q'); if (el) { el.value = ''; el.focus(); } renderEmailResults(true); return; }
+  if (t.closest('#em-more-btn')) { EM_MORE_OPEN = !EM_MORE_OPEN; const pnl = $('#em-more-panel'); if (pnl) pnl.hidden = !EM_MORE_OPEN && !(EMF.min || EMF.postco || EMF.contact); const btn = $('#em-more-btn'); if (btn) btn.setAttribute('aria-expanded', String(!pnl.hidden)); return; }
   if (t.closest('#eml-reset')) { EML = Object.assign({}, EML_DEFAULT); render(true); return; }
   const c = t.closest('[data-emcat]');
   if (c) { EMF.cat = c.dataset.emcat; const sel = $('#em-cat'); if (sel) sel.value = EMF.cat; renderEmailResults(true); const f = $('#em-filters'); if (f && f.scrollIntoView) f.scrollIntoView({ block: 'nearest' }); }
