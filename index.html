@@ -390,6 +390,60 @@ td.nowrap { white-space: nowrap; }
 .al-res.muted { color: var(--muted); font-weight: 500; }
 .al-changes { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
 .al-status .oc-c { font-size: 14px; }
+/* Alerts page (redesign 22 Oct) */
+#alerts-box > * + * { margin-top: 16px; }
+.al-head h2 { margin: 0; font-size: 26px; }
+.al-head p { margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+.al-status-bar { display: flex; gap: 14px; align-items: center; padding: 16px 20px; border-radius: var(--r-lg); background: var(--panel); border: 1px solid var(--line); }
+.al-status-bar.bad { background: var(--alert-bg); border-color: transparent; }
+.al-dot { flex: none; width: 14px; height: 14px; border-radius: 999px; background: var(--muted); box-shadow: 0 0 0 4px var(--soft); }
+.al-status-bar.ok .al-dot { background: var(--ok); } .al-status-bar.bad .al-dot { background: var(--alert); box-shadow: 0 0 0 4px rgba(168, 67, 27, .18); } .al-status-bar.warn .al-dot { background: #c08a2c; }
+.al-status-t { margin: 0; font-size: 18px; font-weight: 700; }
+.al-status-s { margin: 2px 0 0; font-size: 14px; color: var(--muted); }
+.al-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.al-ch { margin: 0; }
+.al-ch-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.al-ch-h h3 { margin: 0; font-size: 18px; } .al-ch-h p { margin: 2px 0 0; font-size: 12.5px; }
+.al-pill { flex: none; display: inline-block; font-size: 12.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--soft); color: var(--muted); white-space: nowrap; }
+.al-pill.ok { color: var(--ok); } .al-pill.bad { background: var(--alert-bg); color: var(--alert); } .al-pill.warn { color: #9a6b12; }
+.al-big { margin: 14px 0 2px; font-size: 40px; font-weight: 700; line-height: 1.1; letter-spacing: -.01em; }
+.al-big span { font-size: 14px; font-weight: 500; color: var(--muted); letter-spacing: 0; } .al-big small { font-size: 12.5px; }
+.al-line { margin: 4px 0 0; font-size: 14px; color: var(--muted); } .al-line b { color: var(--ink); }
+.al-bar { margin-top: 12px; height: 6px; border-radius: 999px; background: var(--track); overflow: hidden; }
+.al-bar i { display: block; height: 100%; border-radius: 999px; background: var(--ok); } .al-ch.bad .al-bar i { background: var(--alert); }
+.al-tiny { font-size: 12.5px; margin: 8px 0 0; }
+.al-warn { padding: 14px 18px; border-radius: var(--r-md); background: var(--alert-bg); border-left: 4px solid var(--alert); }
+.al-warn p { margin: 0; font-size: 14.5px; } .al-warn .al-warn-t { font-weight: 700; color: var(--alert); margin-bottom: 4px; }
+.al-two { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.al-two > .card { margin: 0; }
+.al-act h3, .al-health h3 { margin: 0 0 10px; font-size: 16px; }
+.al-tl { list-style: none; margin: 0; padding: 0; }
+.al-tl li { display: grid; grid-template-columns: 112px 1fr; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.al-tl li:first-child { border-top: 0; }
+.al-tl-time { color: var(--muted); white-space: nowrap; } .al-tl-time small { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.al-tl-items { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.al-tl-item { display: inline-flex; align-items: center; gap: 6px; }
+.al-dot-s { display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: var(--muted); }
+.al-dot-s.ok { background: var(--ok); } .al-dot-s.bad { background: var(--alert); } .al-dot-s.warn { background: #c08a2c; }
+.al-health ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.al-health li { display: flex; gap: 10px; align-items: center; }
+.al-health li i { flex: none; width: 22px; height: 22px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-style: normal; font-size: 12px; font-weight: 800; color: var(--panel); background: #c08a2c; }
+.al-health li.ok i { background: var(--ok); } .al-health li.bad i { background: var(--alert); }
+.al-health li span { display: flex; flex-direction: column; font-size: 14px; } .al-health li small { color: var(--muted); font-size: 12.5px; }
+.al-fold { margin: 0; display: block; padding: 18px 24px; }
+.al-ch, .al-act, .al-health { gap: 0; padding: 22px 24px; }
+.al-fold > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.al-fold > summary::-webkit-details-marker { display: none; }
+.al-fold > summary span:first-child { display: flex; flex-direction: column; } .al-fold > summary b { font-size: 16px; } .al-fold > summary small { color: var(--muted); font-size: 13px; margin-top: 2px; }
+.al-chev svg { transition: transform .15s; } .al-fold[open] .al-chev svg { transform: rotate(90deg); }
+.al-fold > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 6px; }
+.al-fold[open] > summary { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.al-fold h4 { margin: 16px 0 6px; font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.al-ready { margin: 0; padding-left: 18px; font-size: 14px; display: grid; gap: 4px; }
+.al-link { color: var(--ink); font-weight: 600; }
+@media (max-width: 760px) { .al-cards, .al-two { grid-template-columns: 1fr; } .al-big { font-size: 34px; } .al-tl li { grid-template-columns: 1fr; gap: 2px; } }
+@media print { .al-fold { display: block; } }
+
 .al-rule + .al-rule { margin-top: 14px; }
 .al-how { margin: 4px 0 6px; font-size: 14.5px; }
 .al-steps { margin: 0; padding-left: 20px; display: grid; gap: 10px; font-size: 14.5px; line-height: 1.6; }
@@ -1006,7 +1060,7 @@ const EMAIL_CFG = {
   RUNS: { at: 'Run at', date: 'Date', note: 'Note' },
   // Email Log: customer detail. Only arrives when the Dashboard API owner switched SHOW_EMAIL_LOG on.
   LOG: { date: 'Date', time: 'Time', from: 'From', address: 'Email', subject: 'Subject', category: 'Category', keywords: 'Keywords', order: 'Order No', link: 'Link', why: 'Why', counted: 'In the daily email number? (Yes / No / Separate = PostCo)' },
-  STALE_HOURS: 16,             // runs at about 9am, 11am, 3pm and 7pm; the longest normal gap is 7pm → 9am (14 h)
+  STALE_HOURS: 16,             // runs at about 9am, 12pm, 4pm and 8pm; the longest normal gap is 8pm → 9am (13 h)
   LOG_SHOW_MAX: 100,           // Email Log rows shown at once (search to narrow down)
   // Amani 21 Oct: promotions, newsletters and automatic mail are not shown in the Email Log (they were never counted).
   LOG_HIDE: /gmail promotions|company \/ platform, not a customer|automatic email/i,
@@ -1502,7 +1556,7 @@ function render(quiet) {
     '<div class="cols c11"><section class="card">' + cardHead('The two sources') + '<ul class="oc">' +
     '<li>' + key('wa') + '<span class="oc-name">' + SRC_A + '</span><span></span><span class="oc-c">All channels (WhatsApp, Instagram, TikTok). Counts customers once a day and who replied to them. Filled every morning for yesterday.</span></li>' +
     '<li>' + key('ok') + '<span class="oc-name">' + SRC_B + '</span><span></span><span class="oc-c">WhatsApp only. One row per chat with the FAQ menu: what the customer picked and how the chat ended. Instagram and TikTok have no FAQ menu.</span></li></ul>' +
-    (apiMode() ? '<ul class="oc"><li>' + key('accent') + '<span class="oc-name">' + SRC_E + '</span><span></span><span class="oc-c">Customer emails to the HELLO mailbox, counted automatically about 4 times a day (9am, 11am, 3pm, 7pm). PostCo return requests are counted separately.</span></li></ul>' : '') +
+    (apiMode() ? '<ul class="oc"><li>' + key('accent') + '<span class="oc-name">' + SRC_E + '</span><span></span><span class="oc-c">Customer emails to the HELLO mailbox, counted automatically about 4 times a day (9am, 12pm, 4pm, 8pm). PostCo return requests are counted separately.</span></li></ul>' : '') +
     '<p class="foot">They measure different things, so no number on this page adds or divides one by the other.</p></section>' +
     '<section class="card">' + cardHead('How numbers are written') + '<ul class="oc">' +
     '<li><span></span><span class="oc-name">154 (28%)</span><span></span><span class="oc-c">The number first, then its share in brackets. The card or column title says what the share is out of.</span></li>' +
@@ -1547,13 +1601,135 @@ const AL_RESULT = {
 };
 const AL_SENT = { SENT: 'Email sent', OFF: 'Warnings off', 'NO RECIPIENTS': 'Nobody to email', 'EMAIL FAILED': 'Email failed' };
 const amPm = h => (h % 12 || 12) + (h < 12 ? 'am' : 'pm');
+/** "16:30" → "4:30 pm" ; a check hour 16 → "4:30 pm" (checks count up to h:30). */
+const cpLabel = x => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(x)); const h = m ? +m[1] : +x, mi = m ? m[2] : '30'; return (h % 12 || 12) + ':' + mi + (h < 12 ? ' am' : ' pm'); };
+/* ---- Alerts page (redesign 22 Oct): status line → two channel cards → warning box → recent activity + health → settings (folded) → full history (folded) */
+const AL_STATE = { WARNING: ['High', 'bad'], SUPPRESSED: ['High', 'bad'], NORMAL: ['Normal', 'ok'], LEARNING: ['Learning', 'idle'],
+  'NO DATA': ['Waiting for data', 'warn'], FAILED: ['Problem', 'bad'], 'NOT CONNECTED': ['Not connected', 'idle'] };
+const AL_SHORT = { email: ['Email', 'HELLO mailbox'], sleekflow: ['SleekFlow', 'WhatsApp · Instagram · TikTok'] };
+let AL_OPEN = { settings: false, history: false };          // which folded sections are open (kept when the page redraws)
+/** "2026-09-30 16:44" → "4:44 pm" today, else "30 Sep, 4:44 pm". */
+function alWhen(s) {
+  const m = /^(\d{4}-\d{2}-\d{2}) (\d{1,2}):(\d{2})/.exec(String(s || '')); if (!m) return esc(s || '');
+  const t = (+m[2] % 12 || 12) + ':' + m[3] + (+m[2] < 12 ? ' am' : ' pm');
+  if (m[1] === toIso(Date.now())) return t;
+  const p = m[1].split('-').map(Number); return p[2] + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][p[1] - 1] + ', ' + t;
+}
+const alPill = (txt, cls) => '<span class="al-pill ' + cls + '">' + esc(txt) + '</span>';
+const alResClass = r => (/^HIGH|DATA ERROR/.test(r) ? 'bad' : /^NORMAL/.test(r) ? 'ok' : /NO FRESH/.test(r) ? 'warn' : 'idle');
+const alResWord = r => (/^HIGH/.test(r) ? 'High' : /^NORMAL/.test(r) ? 'Normal' : /LEARNING/.test(r) ? 'Learning' : /NO FRESH/.test(r) ? 'Waiting for data' : /DATA ERROR/.test(r) ? 'Problem' : /NOT CONNECTED/.test(r) ? 'Not connected' : r);
+
+/** One channel card: status pill, today's number, "usually … · warns at …", a thin bar. */
+function alChannelCard(ch, c) {
+  const L = c.latest, R = c.readiness, nm = AL_SHORT[ch];
+  const st = L ? AL_STATE[L.result] || [L.result, 'idle'] : R && R.ready ? ['Ready', 'ok'] : ['Learning', 'idle'];
+  const has = L && L.n !== null && L.n !== undefined;
+  let line;
+  if (L && L.avg !== null && L.avg !== undefined) line = 'Usually <b>' + esc(L.avg) + '</b> by now' + (L.line ? ' · warns at <b>' + esc(L.line) + '</b>' : '');
+  else if ((L && L.result === 'LEARNING') || (!L && R && !R.ready)) { const cp = R ? R.checkpoints.find(x => !x.ready) || R.checkpoints[0] : null; line = cp ? 'Learning what is normal: ' + esc(cp.days) + ' of ' + esc(cp.need) + ' days' : 'Learning what is normal'; }
+  else if (L && L.result === 'NO DATA') line = 'Waiting for the next email count';
+  else if (L && L.result === 'FAILED') line = 'Could not count. IT has been told.';
+  else if (L && L.result === 'NOT CONNECTED') line = 'Not connected yet';
+  else line = 'First check after ' + cpLabel(12);
+  const pct = has && L.line ? Math.min(100, Math.round(100 * L.n / Math.max(L.line, L.n))) : 0;
+  return '<section class="card al-ch ' + st[1] + '"><div class="al-ch-h"><div><h3>' + nm[0] + '</h3><p class="muted">' + nm[1] + '</p></div>' + alPill(st[0], st[1]) + '</div>' +
+    '<p class="al-big">' + (has ? num(L.n) : '–') + '<span>' + (has ? ' so far today' + (L.upTo ? ' <small>(up to ' + esc(cpLabel(L.upTo)) + ')</small>' : '') : '') + '</span></p>' +
+    '<p class="al-line">' + line + '</p>' +
+    (pct ? '<div class="al-bar" role="img" aria-label="' + esc(num(L.n) + ' of ' + L.line + ' needed to warn') + '"><i style="width:' + pct + '%"></i></div>' : '') +
+    (L && L.manual ? '<p class="muted al-tiny">Last check was a test run.</p>' : '') + '</section>';
+}
+
+function alertsHtml() {
+  const S = ALERT_STATE;
+  const m = ALERT_MSG ? '<p class="al-msg ' + (ALERT_MSG.ok ? 'good' : 'bad') + '" role="status">' + esc(ALERT_MSG.text) + '</p>' : '';
+  const head = '<div class="al-head"><h2>Alerts</h2><p>We email you when enquiries are much higher than usual for the time of day.</p></div>';
+  if (!S) return head + m + '<section class="card"><p class="muted">' + (ALERT_BUSY ? 'Loading…' : 'The alert settings have not loaded.') + '</p><button type="button" class="btn" id="al-reload">Load again</button></section>';
+  const st = S.status || {}, s = S.settings, chs = S.channels || {};
+  const today = toIso(Date.now());
+  const checks = S.checks || [];
+  const autoToday = checks.filter(h => h.run !== 'test run' && String(h.at).slice(0, 10) === today);
+  // 1. One status line
+  const res = ['email', 'sleekflow'].map(k => (chs[k] && chs[k].latest && !chs[k].latest.manual ? chs[k].latest.result : null));
+  const highNames = ['email', 'sleekflow'].filter((k, i) => res[i] === 'WARNING' || res[i] === 'SUPPRESSED').map(k => AL_SHORT[k][0]);
+  const probNames = ['email', 'sleekflow'].filter((k, i) => res[i] === 'FAILED' || res[i] === 'NO DATA').map(k => AL_SHORT[k][0]);
+  const lvl = highNames.length ? ['bad', joinAnd(highNames) + ' enquiries are high'] : probNames.length ? ['warn', joinAnd(probNames) + ' needs attention']
+    : res.some(r => r === 'NORMAL') ? ['ok', 'All normal'] : res.some(r => r) ? ['idle', 'Learning what is normal'] : ['idle', 'No checks yet today'];
+  const lastAt = autoToday.length ? alWhen(autoToday[0].at) : '';
+  const status = '<section class="al-status-bar ' + lvl[0] + '" role="status"><span class="al-dot" aria-hidden="true"></span><div><p class="al-status-t">' + esc(lvl[1]) + '</p>' +
+    '<p class="al-status-s">' + (s.enabled ? 'Warnings on' : '<b>Warnings off</b>') + ' · ' + s.recipients.length + (s.recipients.length === 1 ? ' person' : ' people') +
+    ' · ' + (lastAt ? 'last check ' + lastAt : 'checks at ' + (st.checkpoints || ['12:30', '16:30', '20:30']).map(cpLabel).join(', ')) + '</p></div></section>';
+  // 2. Channel cards
+  const cards = '<div class="al-cards">' + ['email', 'sleekflow'].map(k => alChannelCard(k, chs[k] || {})).join('') + '</div>';
+  // 3. Warning box (only when a warning was decided today)
+  const warned = autoToday.filter(h => /^HIGH/.test(h.result));
+  const firstWarn = warned.filter(h => h.sent && h.sent !== '—')[0] || warned[0];
+  const warnBox = firstWarn ? '<section class="al-warn' + (/FAILED/.test(firstWarn.sent) ? ' bad' : '') + '"><p class="al-warn-t">' +
+      (/^Sent/.test(firstWarn.sent) ? 'Warning email sent at ' + alWhen(firstWarn.at) : /FAILED/.test(firstWarn.sent) ? 'The warning email could not be sent. Please tell IT.' : 'Warning not emailed: ' + esc(String(firstWarn.sent || 'already sent earlier').replace(/^Not sent \(|\)$/g, ''))) + '</p>' +
+      '<p>' + warned.filter(h => h.at === firstWarn.at).map(h => '<b>' + esc(h.ch) + '</b> ' + esc(h.n) + ' enquiries, usually ' + esc(h.avg) + (h.ratio ? ' (' + esc(h.ratio) + '×)' : '')).join(' · ') + '</p></section>' : '';
+  // 4. Recent activity (last 5 check times)
+  const groups = []; checks.forEach(h => { const g = groups[groups.length - 1]; if (g && g.at === h.at && g.run === h.run) g.items.push(h); else groups.push({ at: h.at, run: h.run, items: [h] }); });
+  const activity = '<section class="card al-act"><h3>Recent activity</h3>' + (groups.length ? '<ol class="al-tl">' + groups.slice(0, 5).map(g =>
+      '<li><span class="al-tl-time">' + alWhen(g.at) + (g.run === 'test run' ? ' <small>test</small>' : '') + '</span><span class="al-tl-items">' +
+      g.items.map(h => '<span class="al-tl-item"><i class="al-dot-s ' + alResClass(h.result) + '" aria-hidden="true"></i>' + esc(h.ch) + ' ' + (h.n === '' ? '' : '<b>' + esc(h.n) + '</b> ') + '<span class="muted">' + esc(alResWord(h.result)) + (/^Sent/.test(h.sent) ? ', emailed' : '') + '</span></span>').join('') +
+      '</span></li>').join('') + '</ol>' : '<p class="muted">No checks yet.</p>') + '</section>';
+  // 5. System health
+  const eL = chs.email && chs.email.latest, sL = chs.sleekflow && chs.sleekflow.latest;
+  const chip = (ok, label, note) => '<li class="' + (ok === true ? 'ok' : ok === false ? 'bad' : 'warn') + '"><i aria-hidden="true">' + (ok === true ? '✓' : '!') + '</i><span><b>' + esc(label) + '</b><small>' + esc(note) + '</small></span></li>';
+  const health = '<section class="card al-health"><h3>System health</h3><ul>' +
+    chip(!eL ? null : eL.result === 'FAILED' ? false : eL.result === 'NO DATA' ? null : true, 'Email data', !eL ? 'not checked yet today' : eL.result === 'FAILED' ? 'could not read' : eL.result === 'NO DATA' ? 'no fresh count' : 'up to date') +
+    chip(!st.sleekflowConnected ? false : sL && sL.result === 'FAILED' ? false : true, 'SleekFlow', !st.sleekflowConnected ? 'not connected' : sL && sL.result === 'FAILED' ? 'did not answer' : 'connected') +
+    chip(st.emailReady !== false, 'Warning emails', st.emailReady === false ? 'not allowed yet' : 'ready') +
+    chip(st.checksInstalled ? true : st.checksInstalled === 0 ? false : null, 'Automatic checks', st.checksInstalled ? st.checksInstalled + ' a day' : 'not switched on') +
+    chip(st.fillRunning ? null : S.checksFrom === 'sheet', 'History sheet', st.fillRunning ? 'filling past days…' : S.checksFrom === 'sheet' ? 'saving' : 'not set up yet') +
+    '</ul></section>';
+  // 6. Settings (folded)
+  const D = alDraft(s);
+  const warnFrom = n => Math.ceil(Math.max(D.ratio * n, n + D.minExtra));
+  const differ = s.email.ratio !== s.sleekflow.ratio || s.email.minExtra !== s.sleekflow.minExtra;
+  const chips = D.recipients.length ? '<ul class="al-chips" aria-label="People who get the warning">' + D.recipients.map(a => '<li class="al-chip"><span>' + esc(a) + '</span>' +
+      '<button type="button" class="al-x" data-al-remove="' + esc(a) + '" aria-label="Remove ' + esc(a) + '" title="Remove">×</button></li>').join('') + '</ul>'
+    : '<p class="muted al-none">Nobody yet. Add at least one address.</p>';
+  const settings = '<details class="card al-fold" id="al-settings"' + (AL_OPEN.settings || D.dirty ? ' open' : '') + '><summary><span><b>Warning settings</b><small>' +
+    (s.enabled ? 'Warn at ' + esc(s.email.ratio) + '× usual and +' + esc(s.email.minExtra) : 'Warnings off') + ' · ' + s.recipients.length + (s.recipients.length === 1 ? ' person' : ' people') + '</small></span><span class="al-chev" aria-hidden="true">' + CHEV + '</span></summary>' +
+    '<form id="alerts-form" autocomplete="off" novalidate>' +
+    '<label class="chk al-on"><input type="checkbox" id="al-enabled"' + (D.enabled ? ' checked' : '') + '> Send warning emails</label>' +
+    '<fieldset class="al-rule"><legend>When to warn (Email and SleekFlow use the same rule)</legend>' +
+    '<p class="al-how">A warning is sent when <b>both</b> are true:</p><ol class="al-steps">' +
+    '<li><label for="al-ratio"><b>Times the normal:</b> today is at least</label> <input type="number" id="al-ratio" class="al-num" min="1.1" max="10" step="0.1" value="' + esc(D.ratio) + '"> × the usual number for this time of day. <span class="muted">(2 = double)</span></li>' +
+    '<li><label for="al-extra"><b>At least this many more:</b> and today is at least</label> <input type="number" id="al-extra" class="al-num" min="0" max="1000" step="1" value="' + esc(D.minExtra) + '"> more than usual. <span class="muted">Stops warnings on quiet days.</span></li></ol>' +
+    '<p class="muted al-eg">Example: usual 4 → warns from <b>' + warnFrom(4) + '</b> · usual 10 → from <b>' + warnFrom(10) + '</b> · usual 30 → from <b>' + warnFrom(30) + '</b>.</p>' +
+    (differ ? '<p class="muted al-eg">Email and SleekFlow had different rules before. Saving uses this one rule for both.</p>' : '') + '</fieldset>' +
+    '<fieldset class="al-rule al-who"><legend>Who gets the warning (' + D.recipients.length + ')</legend>' + chips +
+    '<div class="al-add"><label for="al-new" class="sr">Add an address</label><input type="email" id="al-new" placeholder="name@machino.com.my" autocomplete="off" spellcheck="false">' +
+    '<button type="button" class="btn" id="al-add-btn">Add</button></div>' +
+    '<p class="muted al-eg">Company addresses only (@' + esc(((st.allowedDomains) || ['machino.com.my']).join(', @')) + '). Up to 10 people.</p></fieldset>' +
+    (D.dirty ? '<p class="al-unsaved" role="status">You have changes that are not saved yet.</p>' : '') +
+    '<div class="al-actions"><button type="submit" class="btn' + (D.dirty ? ' primary' : '') + '" id="al-save"' + (ALERT_BUSY ? ' disabled' : '') + '>Save settings</button>' +
+    '<button type="button" class="btn ghost" id="al-test"' + (ALERT_BUSY || (!s.recipients.length && !D.dirty) || st.emailReady === false ? ' disabled' : '') + '>Send a test warning</button></div>' +
+    '<p class="muted al-tiny">Only people with the dashboard password can change these. Every change is listed under Full history.</p></form></details>';
+  // 7. Full history (folded)
+  const ready = ['email', 'sleekflow'].map(k => { const R = chs[k] && chs[k].readiness; return R ? '<li><b>' + AL_SHORT[k][0] + '</b> (' + esc(R.kind) + 's): ' + R.checkpoints.map(x => esc(cpLabel(x.cp)) + ' ' + (x.ready ? 'usual ' + esc(x.avg) + ' from ' + esc(x.days) + ' days' : esc(x.days) + ' of ' + esc(x.need) + ' days')).join(' · ') + '</li>' : ''; }).join('');
+  const ch = S.changes || [];
+  const history = '<details class="card al-fold" id="al-history"' + (AL_OPEN.history ? ' open' : '') + '><summary><span><b>Full history</b><small>' + checks.length + ' recent checks' + (S.sheetUrl ? ' · history sheet' : '') + '</small></span><span class="al-chev" aria-hidden="true">' + CHEV + '</span></summary>' +
+    (S.sheetUrl ? '<p><a class="al-link" href="' + esc(S.sheetUrl) + '" target="_blank" rel="noopener">Open the history sheet ↗</a> <span class="muted al-tiny">Tabs "Enquiry Volume History", "Spike Check Log", "Alert Delivery Log". Only people with access to the sheet.</span></p>' : '') +
+    (ready ? '<h4>Usual levels (today)</h4><ul class="al-ready">' + ready + '</ul>' : '') +
+    '<h4>Checks</h4><p class="muted al-tiny">' + (S.checksFrom === 'sheet' ? 'From the private sheet, tab "Spike Check Log".' : 'From the script (the sheet tab is not set up yet).') + ' Counts only: no customer details.</p>' +
+    (checks.length ? '<div class="tw scrollbox compact"><table><thead><tr><th>Checked</th><th>Channel</th><th>Up to</th><th>Today</th><th>Usual</th><th>Result</th><th class="hide-sm">Email</th></tr></thead><tbody>' +
+      checks.map(h => '<tr><td>' + alWhen(h.at) + (h.run === 'test run' ? ' <span class="muted">(test)</span>' : '') + '</td><td>' + esc(h.ch) + '</td><td>' + esc(h.upTo || h.cp) + '</td>' +
+        '<td>' + esc(h.n === '' ? '–' : h.n) + '</td><td>' + (h.avg === '' ? '–' : esc(h.avg) + (h.days ? ' <span class="muted">(' + esc(h.days) + ' days' + (h.ratio ? ', ' + esc(h.ratio) + '×' : '') + ')</span>' : '')) + '</td>' +
+        '<td><span class="al-res ' + alResClass(h.result) + '">' + esc(h.result) + '</span>' + (h.note ? ' <span class="muted">' + esc(h.note) + '</span>' : '') + '</td><td class="hide-sm">' + esc(h.sent === '—' ? '' : h.sent) + '</td></tr>').join('') +
+      '</tbody></table></div>' : '<p class="muted">No checks yet.</p>') +
+    (ch.length ? '<h4>Changes</h4><ul class="al-changes">' + ch.map(c => '<li><span class="muted">' + esc(new Date(c.at).toLocaleString('en-GB', { timeZone: 'Asia/Kuala_Lumpur', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + '</span> ' + esc(c.what) + '</li>').join('') + '</ul>' : '') +
+    '</details>';
+  return head + m + status + cards + warnBox + '<div class="al-two">' + activity + health + '</div>' + settings + history;
+}
 
 /** Overview: today's high-enquiry warnings (counts only). The newest check per channel. */
 function spikeBanner() {
   const last = {}; (ALERTS_TODAY || []).forEach(a => { if (!last[a.ch] || a.hour >= last[a.ch].hour) last[a.ch] = a; });
   const rows = Object.keys(last).map(k => last[k]); if (!rows.length) return '';
   return '<div class="status warn spike" role="status"><span class="ico" aria-hidden="true">!</span><div><p class="st-h">Enquiries are far above normal today</p><ul>' +
-    rows.map(a => '<li><b>' + esc(AL_CH[a.ch] || a.ch) + ':</b> ' + num(a.n) + ' by ' + amPm(a.hour) + '. Normally about ' + esc(a.avg) + ' by then (' + esc(a.ratio) + '×).</li>').join('') +
+    rows.map(a => '<li><b>' + esc(AL_CH[a.ch] || a.ch) + ':</b> ' + num(a.n) + ' by ' + cpLabel(a.hour) + '. Normally about ' + esc(a.avg) + ' by then (' + esc(a.ratio) + '×).</li>').join('') +
     '</ul><p class="src"><a href="#alerts">Alerts settings and history →</a></p></div></div>';
 }
 
@@ -1571,53 +1747,6 @@ function alertFormProblems(s, domains) {
     else if (domains.indexOf(m[1]) === -1) out.push(a + ': warnings can only go to @' + domains.join(', @') + ' addresses.');
   });
   return out;
-}
-
-function alertsHtml() {
-  const head = pageHead('Alerts', 'A warning email when enquiries are far above normal. "Normal" is the average for the same time of day over the last 4 weeks (weekdays with weekdays, weekends with weekends).');
-  const S = ALERT_STATE;
-  const m = ALERT_MSG ? '<p class="al-msg ' + (ALERT_MSG.ok ? 'good' : 'bad') + '" role="status">' + esc(ALERT_MSG.text) + '</p>' : '';
-  if (!S) return head + m + '<section class="card"><p class="muted">' + (ALERT_BUSY ? 'Loading the alert settings…' : 'The alert settings have not loaded.') + '</p><button type="button" class="btn" id="al-reload">Load again</button></section>';
-  const st = S.status || {}, s = S.settings;
-  const checks = st.checksInstalled === null || st.checksInstalled === undefined ? 'unknown (not switched on yet)' : st.checksInstalled ? 'on, ' + st.checksInstalled + ' a day' : 'not switched on yet';
-  const statusCard = '<section class="card">' + cardHead('Status') + '<ul class="oc al-status">' +
-    '<li><span></span><span class="oc-name">Check times</span><span></span><span class="oc-c">' + esc((st.checkHours || []).map(amPm).join(', ')) + ' (Malaysia time). Automatic checks: ' + esc(checks) + '.</span></li>' +
-    '<li><span></span><span class="oc-name">Warning emails</span><span></span><span class="oc-c">' + (st.emailReady === false ? 'Not switched on yet. IT allows the email permission first; until then nothing is sent (settings can already be saved).' : 'Ready.') + '</span></li>' +
-    '<li><span></span><span class="oc-name">Email</span><span></span><span class="oc-c">Counted from the HELLO mailbox (PostCo returns left out). Needs the email counter to have run in the last 3 hours.</span></li>' +
-    '<li><span></span><span class="oc-name">SleekFlow</span><span></span><span class="oc-c">' + (st.sleekflowConnected ? 'Connected (read only).' : 'Not connected yet. IT adds the SleekFlow key.') + (st.sleekflowFilledDays ? ' Normal level ready: ' + esc(st.sleekflowFilledDays) + ' past days filled from SleekFlow.' : ' Learns its normal level from its own checks, so it shows "Still learning" for the first ' + esc(st.minDays || 5) + ' days (IT can fill the past 2 weeks at once).') + '</span></li>' +
-    '</ul></section>';
-  const D = alDraft(s);
-  const warnFrom = n => Math.ceil(Math.max(D.ratio * n, n + D.minExtra));
-  const differ = s.email.ratio !== s.sleekflow.ratio || s.email.minExtra !== s.sleekflow.minExtra;
-  const chips = D.recipients.length ? '<ul class="al-chips" aria-label="People who get the warning">' + D.recipients.map(a => '<li class="al-chip"><span>' + esc(a) + '</span>' +
-      '<button type="button" class="al-x" data-al-remove="' + esc(a) + '" aria-label="Remove ' + esc(a) + '" title="Remove">×</button></li>').join('') + '</ul>'
-    : '<p class="muted al-none">Nobody yet. Add at least one address.</p>';
-  const form = '<section class="card">' + cardHead('Settings', null, null, 'Only people with the dashboard password can change these. Every change is listed below.') +
-    '<form id="alerts-form" autocomplete="off" novalidate>' +
-    '<label class="chk al-on"><input type="checkbox" id="al-enabled"' + (D.enabled ? ' checked' : '') + '> Send warning emails</label>' +
-    '<fieldset class="al-rule"><legend>When to warn (Email and SleekFlow use the same rule)</legend>' +
-    '<p class="al-how">A warning is sent when <b>both</b> are true:</p><ol class="al-steps">' +
-    '<li><label for="al-ratio"><b>Times the normal:</b> today is at least</label> <input type="number" id="al-ratio" class="al-num" min="1.1" max="10" step="0.1" value="' + esc(D.ratio) + '"> × the usual number for this time of day. <span class="muted">(2 = double)</span></li>' +
-    '<li><label for="al-extra"><b>At least this many more:</b> and today is at least</label> <input type="number" id="al-extra" class="al-num" min="0" max="1000" step="1" value="' + esc(D.minExtra) + '"> more than usual. <span class="muted">This stops warnings on quiet days, e.g. usual 1, today 2 is double but only 1 more.</span></li></ol>' +
-    '<p class="muted al-eg">With these numbers: usual 4 → warns from <b>' + warnFrom(4) + '</b> · usual 10 → from <b>' + warnFrom(10) + '</b> · usual 30 → from <b>' + warnFrom(30) + '</b>.</p>' +
-    (differ ? '<p class="muted al-eg">Email and SleekFlow had different rules before. Saving uses this one rule for both.</p>' : '') + '</fieldset>' +
-    '<fieldset class="al-rule al-who"><legend>Who gets the warning (' + D.recipients.length + ')</legend>' + chips +
-    '<div class="al-add"><label for="al-new" class="sr">Add an address</label><input type="email" id="al-new" placeholder="name@machino.com.my" autocomplete="off" spellcheck="false">' +
-    '<button type="button" class="btn" id="al-add-btn">Add</button></div>' +
-    '<p class="muted al-eg">Company addresses only (@' + esc(((st.allowedDomains) || ['machino.com.my']).join(', @')) + '). Up to 10 people.</p></fieldset>' +
-    (D.dirty ? '<p class="al-unsaved" role="status">You have changes that are not saved yet.</p>' : '') +
-    '<div class="al-actions"><button type="submit" class="btn' + (D.dirty ? ' primary' : '') + '" id="al-save"' + (ALERT_BUSY ? ' disabled' : '') + '>Save settings</button>' +
-    '<button type="button" class="btn ghost" id="al-test"' + (ALERT_BUSY || (!s.recipients.length && !D.dirty) || st.emailReady === false ? ' disabled' : '') + '>Send a test warning</button></div></form></section>';
-  const hist = (S.history || []);
-  const histCard = '<section class="card">' + cardHead('Recent checks', null, null, 'Newest first. Counts only: no customer details are stored or emailed.') +
-    (hist.length ? '<div class="tw scrollbox compact"><table><thead><tr><th>Day</th><th>Check</th><th>Channel</th><th>Today so far</th><th>Normal</th><th>Result</th><th class="hide-sm">Email</th></tr></thead><tbody>' +
-      hist.map(h => { const r = AL_RESULT[h.result] || [h.result, 'muted']; return '<tr><td>' + esc(h.date) + '</td><td>' + amPm(h.hour) + (h.upTo ? ' <span class="muted">(to ' + esc(h.upTo) + ')</span>' : '') + '</td><td>' + esc(h.ch === 'email' ? 'Email' : 'SleekFlow') + '</td>' +
-        '<td>' + (h.n === null || h.n === undefined ? '–' : num(h.n)) + '</td><td>' + (h.avg === null || h.avg === undefined ? '–' : esc(h.avg) + (h.ratio ? ' <span class="muted">(' + esc(h.ratio) + '×)</span>' : '')) + '</td>' +
-        '<td><span class="al-res ' + r[1] + '">' + esc(r[0]) + '</span>' + (h.note ? ' <span class="muted">' + esc(h.note) + '</span>' : '') + '</td><td class="hide-sm">' + esc(AL_SENT[h.sent] || '') + '</td></tr>'; }).join('') +
-      '</tbody></table></div>' : '<p class="muted">No checks yet. They start once IT switches the automatic checks on.</p>') + '</section>';
-  const ch = S.changes || [];
-  const changeCard = ch.length ? '<section class="card">' + cardHead('Changes') + '<ul class="al-changes">' + ch.map(c => '<li><span class="muted">' + esc(new Date(c.at).toLocaleString('en-GB', { timeZone: 'Asia/Kuala_Lumpur', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + '</span> ' + esc(c.what) + '</li>').join('') + '</ul></section>' : '';
-  return head + m + '<div class="cols c21">' + form + statusCard + '</div>' + histCard + changeCard;
 }
 
 function renderAlerts() { const box = $('#alerts-box'); if (box) box.innerHTML = alertsHtml(); }
@@ -1779,7 +1908,7 @@ const EMAIL_DEFS = [
   ['PostCo return request', 'A return or exchange request made through the PostCo portal. Counted on its own, never inside the email enquiries.'],
   ['Contact form', 'A message from the website contact form (Shopify). It is a customer email, so it is counted inside the email enquiries and also shown on its own.'],
   ['Email category', 'What the email is about, from keywords in the subject and first lines (English and Malay). A guide, not exact: unclear ones go to Other / Unknown.'],
-  ['Today so far', 'Today\'s count up to the last automatic run (about 9am, 11am, 3pm and 7pm). It goes up during the day.'],
+  ['Today so far', 'Today\'s count up to the last automatic run (about 9am, 12pm, 4pm and 8pm). It goes up during the day.'],
 ];
 const emDot = '<span class="key" style="background:var(--accent)"></span>';
 const emDay = ms => dayText(ms) + ' ' + wall(ms).y;
@@ -2285,6 +2414,7 @@ $('#app').addEventListener('click', e => {
   if (e.target.closest('#al-add-btn')) alAddRecipient();
   const rm = e.target.closest('[data-al-remove]'); if (rm) alRemoveRecipient(rm.dataset.alRemove);
 });
+$('#app').addEventListener('toggle', e => { const t = e.target; if (t && t.id === 'al-settings') AL_OPEN.settings = t.open; if (t && t.id === 'al-history') AL_OPEN.history = t.open; }, true);
 /* Alerts settings: typing a number or ticking the box marks the form as changed; Enter in the address box adds the person. */
 $('#app').addEventListener('input', e => { if (e.target && /^al-(ratio|extra|enabled)$/.test(e.target.id) && AL_DRAFT) { alSyncDraft(); AL_DRAFT.dirty = true; } });
 $('#app').addEventListener('change', e => { if (e.target && e.target.id === 'al-enabled' && AL_DRAFT) { alSyncDraft(); AL_DRAFT.dirty = true; } });
