@@ -1717,6 +1717,7 @@ function alertsHtml() {
     '<button type="button" class="btn" id="al-add-btn">Add</button></div>' +
     '<p class="muted al-eg">Company addresses only (@' + esc(((st.allowedDomains) || ['machino.com.my']).join(', @')) + '). Up to 10 people.</p></fieldset>' +
     (D.dirty ? '<p class="al-unsaved" role="status">You have changes that are not saved yet.</p>' : '') +
+    (AL_OPEN.settings || D.dirty ? m : '') +
     '<div class="al-actions"><button type="submit" class="btn' + (D.dirty ? ' primary' : '') + '" id="al-save"' + (ALERT_BUSY ? ' disabled' : '') + '>Save settings</button>' +
     '<button type="button" class="btn ghost" id="al-test"' + (ALERT_BUSY || (!s.recipients.length && !D.dirty) || st.emailReady === false ? ' disabled' : '') + '>Send a test warning</button></div>' +
     '<p class="muted al-tiny">Only people with the dashboard password can change these. Every change is listed under Full history.</p></form></details>';
@@ -1734,7 +1735,7 @@ function alertsHtml() {
       '</tbody></table></div>' : '<p class="muted">No checks yet.</p>') +
     (ch.length ? '<h4>Changes</h4><ul class="al-changes">' + ch.map(c => '<li><span class="muted">' + esc(new Date(c.at).toLocaleString('en-GB', { timeZone: 'Asia/Kuala_Lumpur', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) + '</span> ' + esc(c.what) + '</li>').join('') + '</ul>' : '') +
     '</details>';
-  return head + m + status + cards + warnBox + '<div class="al-two">' + activity + health + '</div>' + settings + history;
+  return head + (AL_OPEN.settings || D.dirty ? '' : m) + status + cards + warnBox + '<div class="al-two">' + activity + health + '</div>' + settings + history;
 }
 
 /** Overview: today's high-enquiry warnings (counts only). The newest check per channel. */
@@ -1801,16 +1802,26 @@ function readAlertForm() {
 }
 
 /** "Add" button / Enter in the address box: checks the address, adds a bubble (saved with "Save settings"). */
-function alAddRecipient() {
-  const box = $('#al-new'); if (!box) return;
+/** Moves what is typed in the address box into the bubbles. Returns a list of problems ([] = ok, or nothing typed). */
+function alTakeTyped() {
+  const box = $('#al-new'); if (!box || !box.value.trim()) return [];
+  if (!AL_DRAFT && ALERT_STATE) alDraft(ALERT_STATE.settings);
   alSyncDraft();
   const list = box.value.split(/[\s,;]+/).map(x => x.trim().toLowerCase()).filter(Boolean);
-  if (!list.length) return;
   const bad = alertFormProblems({ email: { ratio: 2, minExtra: 0 }, sleekflow: { ratio: 2, minExtra: 0 }, recipients: list }, alDomains());
-  if (bad.length) { ALERT_MSG = { ok: false, text: bad.join(' ') }; renderAlerts(); const nb = $('#al-new'); if (nb) { nb.value = box.value; nb.focus(); } return; }
+  if (bad.length) return bad;
   list.forEach(a => { if (AL_DRAFT.recipients.indexOf(a) === -1) AL_DRAFT.recipients.push(a); });
-  if (AL_DRAFT.recipients.length > 10) { AL_DRAFT.recipients = AL_DRAFT.recipients.slice(0, 10); ALERT_MSG = { ok: false, text: 'At most 10 people.' }; } else ALERT_MSG = null;
-  AL_DRAFT.dirty = true; renderAlerts(); const nb = $('#al-new'); if (nb) nb.focus();
+  if (AL_DRAFT.recipients.length > 10) { AL_DRAFT.recipients = AL_DRAFT.recipients.slice(0, 10); return ['At most 10 people.']; }
+  AL_DRAFT.dirty = true; box.value = '';
+  return [];
+}
+
+function alAddRecipient() {
+  const box = $('#al-new'); if (!box) return;
+  const typed = box.value.trim(); if (!typed) return;
+  const bad = alTakeTyped();
+  ALERT_MSG = bad.length ? { ok: false, text: bad.join(' ') } : { ok: true, text: 'Added ' + typed.toLowerCase() + '. Press Save settings to keep it.' };
+  renderAlerts(); const nb = $('#al-new'); if (nb) { if (bad.length) nb.value = typed; nb.focus(); }
 }
 function alRemoveRecipient(a) {
   alSyncDraft();
@@ -1818,6 +1829,8 @@ function alRemoveRecipient(a) {
 }
 
 function saveAlerts() {
+  const typedBad = alTakeTyped();        // an address typed but not yet added counts too (22 Oct: it was silently ignored)
+  if (typedBad.length) { ALERT_MSG = { ok: false, text: typedBad.join(' ') + ' Nothing was saved.' }; renderAlerts(); return; }
   const s = readAlertForm();
   const bad = alertFormProblems(s, alDomains());
   if (bad.length) { ALERT_MSG = { ok: false, text: bad.join(' ').replace(/(Email|SleekFlow): /g, '') }; renderAlerts(); return; }
