@@ -441,6 +441,9 @@ td.nowrap { white-space: nowrap; }
 .al-fold h4 { margin: 16px 0 6px; font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .al-ex { margin-top: 12px; padding: 12px 14px; border-radius: var(--r-md); background: var(--soft); font-size: 14px; line-height: 1.55; }
 .al-ex p { margin: 0; } .al-ex p + p { margin-top: 4px; }
+.em-days-t td.nowrap, .em-days-t .nowrap { white-space: nowrap; }
+.em-days-t .barcell { width: 28%; min-width: 60px; }
+.em-days .scrollbox { max-height: 460px; }
 .al-ready { margin: 0; padding-left: 18px; font-size: 14px; display: grid; gap: 4px; }
 .al-link { color: var(--ink); font-weight: 600; }
 @media (max-width: 760px) { .al-cards, .al-two { grid-template-columns: 1fr; } .al-big { font-size: 34px; } .al-tl li { grid-template-columns: 1fr; gap: 2px; } }
@@ -2000,7 +2003,8 @@ function partE(SE) {
       '<p class="def">Click a category to filter by it. Each enquiry gets one category from keywords in its subject and first lines (English and Malay). ' + (m.cats.unclear ? num(m.cats.unclear) + ' of ' + num(tot) + ' had no clear keywords.' : '') + ' A guide, not exact.</p>'
       : '<p class="muted">No email categories in this period yet.</p>') + '</section>';
 
-  return head + status + s1 + filters + '<div id="em-results"></div>' + s3 + emailLogCard();
+  // Amani 22 Oct: categories right under the chart (important); the day table folded at the bottom.
+  return head + status + s1 + filters + '<div id="em-results"></div>' + s3 + '<div id="em-list"></div>' + '<div id="em-daytable"></div>' + emailLogCard();
 }
 
 /** The filtered chart + day table. Re-drawn on every filter change without rebuilding the rest of the page. */
@@ -2009,14 +2013,25 @@ function emailResultsHtml(SE, F) {
   const chart = '<section class="card">' + cardHead(label + ' per day', TAG_E + (EMF.cat ? ' · category filter on' : '')) +
     legend([{ c: 'accent', t: esc(label) + ' <b>' + num(F.n) + '</b>' }].concat(EMF.cat ? [] : [{ c: 'person', t: 'PostCo return requests <b>' + num(F.postco) + '</b>' }])) +
     '<div class="chart"><canvas class="js-email" id="cEmail" role="img" aria-label="' + esc(label) + ' per day"></canvas></div><p class="nochart muted"></p></section>';
-  const table = '<section class="card">' + cardHead('Day by day', TAG_E + ' · ' + F.rows.length + ' of ' + F.of + ' days') +
-    (F.rows.length ? '<div class="tw"><table><thead><tr><th>Day</th><th class="num">' + esc(label) + '</th>' + (EMF.cat ? '<th class="num">All email enquiries</th>' : '') + '<th class="num">PostCo</th><th class="num">Contact form</th><th class="hide-sm">Biggest category</th><th class="num hide-sm">Last counted</th></tr></thead><tbody>' +
-      F.rows.map(d => '<tr><td><b>' + esc(DAYS[d.dow].slice(0, 3) + ' ' + emDay(d.ms)) + '</b>' + (d.iso === toIso(Date.now()) ? ' <span class="muted">(so far)</span>' : '') + '</td><td class="num"><b>' + num(d.n) + '</b></td>' + (EMF.cat ? '<td class="num">' + num(d.total) + '</td>' : '') +
-        '<td class="num">' + num(d.postco) + '</td><td class="num">' + num(d.contact) + '</td><td class="muted hide-sm">' + esc(d.top || '–') + '</td><td class="num muted hide-sm">' + (d.updatedMs !== null ? esc(dayText(d.updatedMs) + ', ' + clock(d.updatedMs)) : '–') + '</td></tr>').join('') +
-      '</tbody><tfoot><tr><td><b>Shown days</b></td><td class="num"><b>' + num(F.n) + '</b></td>' + (EMF.cat ? '<td></td>' : '') + '<td class="num"><b>' + num(F.postco) + '</b></td><td class="num"><b>' + num(F.contact) + '</b></td><td class="hide-sm"></td><td class="hide-sm"></td></tr></tfoot></table></div>'
+  return chart;
+}
+
+let EM_DAYS_OPEN = false;   // the folded "Day by day" table on the Email Data tab (kept open across redraws)
+/** "Day by day" at the bottom of the Email Data tab: folded, one summary line; inside a compact table with a small bar per day. */
+function emailDaysHtml(SE, F) {
+  const label = F.label, today = toIso(Date.now());
+  const busiest = F.rows.filter(d => d.iso !== today).reduce((b, d) => (!b || d.n > b.n ? d : b), null);
+  const day = d => DAYS[d.dow].slice(0, 3) + ' ' + emDay(d.ms).replace(/ \d{4}$/, '');
+  const max = Math.max(1, ...F.rows.map(d => d.n));
+  const summary = F.rows.length ? F.rows.length + ' day' + (F.rows.length === 1 ? '' : 's') + ' · ' + num(F.n) + ' ' + label.toLowerCase() + (busiest && busiest.n ? ' · busiest ' + day(busiest) + ' (' + num(busiest.n) + ')' : '') : 'No days match these filters';
+  return '<details class="card al-fold em-days" id="em-days-fold"' + (EM_DAYS_OPEN ? ' open' : '') + '><summary><span><b>Day by day</b><small>' + esc(summary) + '</small></span><span class="al-chev" aria-hidden="true">' + CHEV + '</span></summary>' +
+    (F.rows.length ? '<div class="tw scrollbox compact"><table class="em-days-t"><thead><tr><th>Day</th><th class="num">' + esc(label) + '</th><th class="hide-sm"><span class="sr">Bar</span></th>' + (EMF.cat ? '<th class="num">All</th>' : '') + '<th class="num">PostCo</th><th class="num">Form</th><th class="hide-sm">Top category</th><th class="num hide-sm">Counted</th></tr></thead><tbody>' +
+      F.rows.map(d => '<tr><td class="nowrap"><b>' + esc(day(d)) + '</b>' + (d.iso === today ? ' <span class="al-pill idle">so far</span>' : '') + '</td><td class="num"><b>' + num(d.n) + '</b></td>' +
+        '<td class="barcell hide-sm"><div class="bar" style="width:' + (100 * d.n / max) + '%;background:var(--accent)"></div></td>' + (EMF.cat ? '<td class="num">' + num(d.total) + '</td>' : '') +
+        '<td class="num">' + num(d.postco) + '</td><td class="num">' + num(d.contact) + '</td><td class="muted hide-sm">' + esc(d.top || '–') + '</td><td class="num muted hide-sm nowrap">' + (d.updatedMs !== null ? esc((toIso(d.updatedMs) === d.iso ? '' : dayText(d.updatedMs) + ', ') + clock(d.updatedMs)) : '–') + '</td></tr>').join('') +
+      '</tbody><tfoot><tr><td><b>Total</b></td><td class="num"><b>' + num(F.n) + '</b></td><td class="hide-sm"></td>' + (EMF.cat ? '<td></td>' : '') + '<td class="num"><b>' + num(F.postco) + '</b></td><td class="num"><b>' + num(F.contact) + '</b></td><td class="hide-sm"></td><td class="hide-sm"></td></tr></tfoot></table></div>'
       : '<p class="muted">No days match these filters. Try fewer filters or press Reset filters.</p>') +
-    '<p class="def">Customer names, addresses and subjects stay in the private sheet' + (READ_E && READ_E.log ? ' (or in the Email Log below)' : '') + '.</p></section>';
-  return '<div class="cols c21">' + chart + table + '</div>' + emailListHtml(F);
+    '<p class="def">Newest first. "Form" = website contact form. Customer names, addresses and subjects stay in the private sheet' + (READ_E && READ_E.log ? ' (or in the Email Log below)' : '') + '.</p></details>';
 }
 
 /** Email Log search: only shown when the Dashboard API owner switched SHOW_EMAIL_LOG on (customer names, addresses, subjects). */
@@ -2072,11 +2087,13 @@ function renderEmailResults(quiet) {
     const F = filterEmailDays(SE, READ_E, EMF);
     CHARTS = CHARTS.filter(ch => { if (ch.canvas && ch.canvas.id === 'cEmail') { ch.destroy(); return false; } return true; });
     box.innerHTML = emailResultsHtml(SE, F);
+    const daysBox = $('#em-daytable'); if (daysBox) daysBox.innerHTML = emailDaysHtml(SE, F);
+    const listBox = $('#em-list'); if (listBox) listBox.innerHTML = emailListHtml(F);
     const active = Object.keys(EMF_DEFAULT).filter(k => EMF[k] !== EMF_DEFAULT[k] && k !== 'sort').length;
     $('#em-count').textContent = 'Showing ' + F.rows.length + ' of ' + F.of + ' days · ' + num(F.n) + ' ' + F.label.toLowerCase() + (active ? ' · ' + active + ' filter' + (active === 1 ? '' : 's') + ' on' : '');
     const el = $('#cEmail');
     if (el && window.Chart) CHARTS.push(new Chart(el, emailChartConfig(SE, quiet, F)));
-    else if (el && !window.Chart) { el.parentNode.style.display = 'none'; box.querySelector('.nochart').textContent = 'The chart could not load. The table is still correct.'; }
+    else if (el && !window.Chart) { el.parentNode.style.display = 'none'; box.querySelector('.nochart').textContent = 'The chart could not load. The Day by day table below is still correct.'; }
   }
   const lb = $('#eml-results'); if (lb) lb.innerHTML = emailLogResultsHtml();
 }
@@ -2440,7 +2457,7 @@ $('#app').addEventListener('click', e => {
   if (e.target.closest('#al-add-btn')) alAddRecipient();
   const rm = e.target.closest('[data-al-remove]'); if (rm) alRemoveRecipient(rm.dataset.alRemove);
 });
-$('#app').addEventListener('toggle', e => { const t = e.target; if (t && t.id === 'al-settings') AL_OPEN.settings = t.open; if (t && t.id === 'al-history') AL_OPEN.history = t.open; }, true);
+$('#app').addEventListener('toggle', e => { const t = e.target; if (t && t.id === 'em-days-fold') EM_DAYS_OPEN = t.open; if (t && t.id === 'al-settings') AL_OPEN.settings = t.open; if (t && t.id === 'al-history') AL_OPEN.history = t.open; }, true);
 /* Alerts settings: typing a number or ticking the box marks the form as changed; Enter in the address box adds the person. */
 $('#app').addEventListener('input', e => { if (e.target && /^al-(ratio|extra|enabled)$/.test(e.target.id) && AL_DRAFT) { alSyncDraft(); AL_DRAFT.dirty = true; const ex = $('#al-ex'); if (ex) ex.innerHTML = alExampleHtml(AL_DRAFT); } });
 $('#app').addEventListener('change', e => { if (e.target && e.target.id === 'al-enabled' && AL_DRAFT) { alSyncDraft(); AL_DRAFT.dirty = true; } });
