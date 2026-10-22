@@ -439,6 +439,8 @@ td.nowrap { white-space: nowrap; }
 .al-fold > summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: 6px; }
 .al-fold[open] > summary { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .al-fold h4 { margin: 16px 0 6px; font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.al-ex { margin-top: 12px; padding: 12px 14px; border-radius: var(--r-md); background: var(--soft); font-size: 14px; line-height: 1.55; }
+.al-ex p { margin: 0; } .al-ex p + p { margin-top: 4px; }
 .al-ready { margin: 0; padding-left: 18px; font-size: 14px; display: grid; gap: 4px; }
 .al-link { color: var(--ink); font-weight: 600; }
 @media (max-width: 760px) { .al-cards, .al-two { grid-template-columns: 1fr; } .al-big { font-size: 34px; } .al-tl li { grid-template-columns: 1fr; gap: 2px; } }
@@ -1639,6 +1641,17 @@ function alChannelCard(ch, c) {
     (L && L.manual ? '<p class="muted al-tiny">Last check was a test run.</p>' : '') + '</section>';
 }
 
+/** The worked example under the rule (updates while typing). D: { ratio, minExtra }. */
+function alExampleHtml(D) {
+  const r = Number(D.ratio), e = Number(D.minExtra);
+  if (!(r >= 1.1) || !(e >= 0)) return '<p><b>Example:</b> type a number of at least 1.1, and an extra of 0 or more.</p>';
+  const need = n => Math.ceil(Math.max(r * n, n + e, 3) - 1e-9);
+  const times = Math.round(4 * r * 10) / 10, plus = 4 + e, n4 = need(4);
+  return '<p><b>Example:</b> usually <b>4</b> by this time → today needs <b>' + n4 + ' or more</b> <span class="muted">(4 × ' + esc(r) + ' = ' + esc(times) + ', 4 + ' + esc(e) + ' = ' + esc(plus) + ', the bigger one counts)</span></p>' +
+    '<p>' + (n4 > 1 ? esc(n4 - 1) + ' → no warning · ' : '') + esc(n4) + ' → ⚠️ warning · a busy day: usually 30 → needs ' + need(30) + '</p>' +
+    '<p class="muted">Why two rules? On a quiet day (usually 1, today 2) it is double, but only 1 more. The second rule stops that false alarm.</p>';
+}
+
 function alertsHtml() {
   const S = ALERT_STATE;
   const m = ALERT_MSG ? '<p class="al-msg ' + (ALERT_MSG.ok ? 'good' : 'bad') + '" role="status">' + esc(ALERT_MSG.text) + '</p>' : '';
@@ -1693,12 +1706,12 @@ function alertsHtml() {
     (s.enabled ? 'Warn at ' + esc(s.email.ratio) + '× usual and +' + esc(s.email.minExtra) : 'Warnings off') + ' · ' + s.recipients.length + (s.recipients.length === 1 ? ' person' : ' people') + '</small></span><span class="al-chev" aria-hidden="true">' + CHEV + '</span></summary>' +
     '<form id="alerts-form" autocomplete="off" novalidate>' +
     '<label class="chk al-on"><input type="checkbox" id="al-enabled"' + (D.enabled ? ' checked' : '') + '> Send warning emails</label>' +
-    '<fieldset class="al-rule"><legend>When to warn (Email and SleekFlow use the same rule)</legend>' +
-    '<p class="al-how">A warning is sent when <b>both</b> are true:</p><ol class="al-steps">' +
-    '<li><label for="al-ratio"><b>Times the normal:</b> today is at least</label> <input type="number" id="al-ratio" class="al-num" min="1.1" max="10" step="0.1" value="' + esc(D.ratio) + '"> × the usual number for this time of day. <span class="muted">(2 = double)</span></li>' +
-    '<li><label for="al-extra"><b>At least this many more:</b> and today is at least</label> <input type="number" id="al-extra" class="al-num" min="0" max="1000" step="1" value="' + esc(D.minExtra) + '"> more than usual. <span class="muted">Stops warnings on quiet days.</span></li></ol>' +
-    '<p class="muted al-eg">Example: usual 4 → warns from <b>' + warnFrom(4) + '</b> · usual 10 → from <b>' + warnFrom(10) + '</b> · usual 30 → from <b>' + warnFrom(30) + '</b>.</p>' +
-    (differ ? '<p class="muted al-eg">Email and SleekFlow had different rules before. Saving uses this one rule for both.</p>' : '') + '</fieldset>' +
+    '<fieldset class="al-rule"><legend>When to send a warning</legend>' +
+    '<p class="al-how">Email and SleekFlow use the same rule. A warning is sent only when today is <b>both</b>:</p><ol class="al-steps">' +
+    '<li><input type="number" id="al-ratio" class="al-num" min="1.1" max="10" step="0.1" value="' + esc(D.ratio) + '" aria-label="Times the usual number"> <label for="al-ratio">× the usual number for this time of day</label> <span class="muted">(2 = double)</span></li>' +
+    '<li><label for="al-extra">and at least</label> <input type="number" id="al-extra" class="al-num" min="0" max="1000" step="1" value="' + esc(D.minExtra) + '" aria-label="At least this many more"> more than usual</li></ol>' +
+    '<div class="al-ex" id="al-ex">' + alExampleHtml(D) + '</div>' +
+    (differ ? '<p class="muted al-eg">SleekFlow still has an older rule saved. Press Save settings to use this one rule for both.</p>' : '') + '</fieldset>' +
     '<fieldset class="al-rule al-who"><legend>Who gets the warning (' + D.recipients.length + ')</legend>' + chips +
     '<div class="al-add"><label for="al-new" class="sr">Add an address</label><input type="email" id="al-new" placeholder="name@machino.com.my" autocomplete="off" spellcheck="false">' +
     '<button type="button" class="btn" id="al-add-btn">Add</button></div>' +
@@ -2416,7 +2429,7 @@ $('#app').addEventListener('click', e => {
 });
 $('#app').addEventListener('toggle', e => { const t = e.target; if (t && t.id === 'al-settings') AL_OPEN.settings = t.open; if (t && t.id === 'al-history') AL_OPEN.history = t.open; }, true);
 /* Alerts settings: typing a number or ticking the box marks the form as changed; Enter in the address box adds the person. */
-$('#app').addEventListener('input', e => { if (e.target && /^al-(ratio|extra|enabled)$/.test(e.target.id) && AL_DRAFT) { alSyncDraft(); AL_DRAFT.dirty = true; } });
+$('#app').addEventListener('input', e => { if (e.target && /^al-(ratio|extra|enabled)$/.test(e.target.id) && AL_DRAFT) { alSyncDraft(); AL_DRAFT.dirty = true; const ex = $('#al-ex'); if (ex) ex.innerHTML = alExampleHtml(AL_DRAFT); } });
 $('#app').addEventListener('change', e => { if (e.target && e.target.id === 'al-enabled' && AL_DRAFT) { alSyncDraft(); AL_DRAFT.dirty = true; } });
 $('#app').addEventListener('keydown', e => { if (e.target && e.target.id === 'al-new' && e.key === 'Enter') { e.preventDefault(); alAddRecipient(); } });
 /* Email Data filters: every change re-draws only the filtered results (typing in a search box waits a moment). */
