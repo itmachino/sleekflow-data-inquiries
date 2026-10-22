@@ -1384,6 +1384,7 @@ async function loadFromApi() {
   const e = take(em, { text: TEXT_E }, readEmail, 'the email numbers ' + (er.emailTotal || 'did not arrive') + '.');
   if (e.read) { READ_E = e.read; TEXT_E = e.text; ERR_E = READ_E.problems.length ? READ_E.problems.join('; ') + '.' : null; changed = true; }
   else if (!e.same) ERR_E = e.err;
+  if (typeof r.emailLogEnabled === 'boolean') EMAIL_LOG_ON = r.emailLogEnabled;
   const al = Array.isArray(r.alerts) ? r.alerts : [];
   if (JSON.stringify(al) !== JSON.stringify(ALERTS_TODAY)) { ALERTS_TODAY = al; changed = true; }
   return changed;
@@ -1401,7 +1402,7 @@ function showLogin(message) {
   LOCKED = true; document.body.classList.add('locked');
   CHARTS.forEach(c => c.destroy()); CHARTS = [];
   READ_A = READ_B = READ_E = null; TEXT_A = TEXT_B = TEXT_E = null; ERR_A = ERR_B = ERR_E = null; RENDERED = false; LAST = null; FETCHED_AT = null;
-  ALERTS_TODAY = []; ALERT_STATE = null; ALERT_MSG = null; AL_DRAFT = null;
+  ALERTS_TODAY = []; ALERT_STATE = null; ALERT_MSG = null; AL_DRAFT = null; EMAIL_LOG_ON = undefined; EM_LOG_MSG = null;
   $('#period-title').textContent = ''; $('#morning').textContent = ''; $('#meta').textContent = 'Private report. Please log in to see the numbers.'; $('#notices').innerHTML = '';
   $('#app').innerHTML = '<section class="card login">' + cardHead('Log in') + '<p class="muted">This report is for the Machino team only. Enter the dashboard password.</p>' +
     '<form id="login-form" autocomplete="off"><label for="pw">Password</label><input type="password" id="pw" name="pw" autocomplete="current-password" required>' +
@@ -2021,7 +2022,8 @@ function emailOverview(SE) {
 /* Email Data tab filters. Kept while the page refreshes; Reset clears them. */
 const EMF_DEFAULT = { q: '', cat: '', days: 'all', min: '', postco: false, contact: false, sort: 'newest' };
 const EML_DEFAULT = { q: '', cat: '', counted: '', day: '', customersOnly: true };   // Amani 22 Oct: customers only by default
-let EM_LOG_SHOW = store('emLogShow') === '1';   // 'Show customer details' switch (per viewer; off by default)
+let EMAIL_LOG_ON;                 // the saved Customer email details switch (from the data link: true / false)
+let EM_LOG_BUSY = false, EM_LOG_MSG = null;
 let EMF = Object.assign({}, EMF_DEFAULT), EML = Object.assign({}, EML_DEFAULT);
 const opt = (v, t, cur) => '<option value="' + esc(v) + '"' + (String(cur) === String(v) ? ' selected' : '') + '>' + esc(t) + '</option>';
 
@@ -2113,22 +2115,31 @@ function emailWeekHtml(F) {
 /** Folded at the bottom: where the numbers come from (moved out of the header to keep the page short). */
 function emailMoreHtml() {
   return '<details class="card al-fold" id="em-how"><summary><span><b>How these numbers work</b><small>Source, what counts, privacy</small></span><span class="al-chev" aria-hidden="true">' + CHEV + '</span></summary>' +
-    '<ul class="em-how"><li>Source: the private Google Sheet "Machino CS — Private Data" (' + (READ_E && READ_E.log ? 'counts + Email Log, switched on by the owner' : 'counts only, no customer details') + ').</li>' +
+    '<ul class="em-how"><li>Source: the private Google Sheet "Machino CS — Private Data" (' + (READ_E && READ_E.log ? 'counts + customer email details (switched on)' : 'counts only; customer email details are off') + ').</li>' +
     '<li>One enquiry = one email conversation with at least one customer message that day. Promotions, newsletters, automatic emails, couriers and staff are left out.</li>' +
     '<li>PostCo return requests are counted separately, never inside the email enquiries.</li>' +
     '<li>"Today so far" is replaced by each new count (about 9am, 12pm, 4pm and 8pm).</li></ul></details>';
 }
 
-/** Email Log search: only shown when the Dashboard API owner switched SHOW_EMAIL_LOG on (customer names, addresses, subjects). */
+/**
+ * The Customer email details card (Amani 22 Oct: one login, one switch). The switch saves SHOW_EMAIL_LOG in Google for everyone.
+ * Off = the data link sends no names, addresses or subjects at all, so there is nothing to show (not just hidden on the page).
+ */
 function emailLogCard() {
-  const log = READ_E && READ_E.log; if (!log) return '';
-  const days = uniq(log.map(r => r.iso)).sort().reverse();
+  if (!apiMode()) return '';
+  const log = READ_E && READ_E.log;
+  const on = EMAIL_LOG_ON === true || (EMAIL_LOG_ON === undefined && !!log);
+  const days = log ? uniq(log.map(r => r.iso)).sort().reverse() : [];
   const f = EML;
-  const sw = (id, on, text) => '<label class="em-switch"><input type="checkbox" role="switch" id="' + id + '"' + (on ? ' checked' : '') + '><span class="em-switch-ui" aria-hidden="true"></span><span>' + text + '</span></label>';
-  const headLine = '<div class="em-log-h"><div class="em-sec-h"><h3>Email Log</h3><p>Every email of the last ' + days.length + ' days and whether it was counted · private' +
-    (READ_E.logHidden ? ' · ' + READ_E.logHidden + ' promotion, newsletter and automatic emails are never listed' : '') + '</p></div>' + sw('eml-show', EM_LOG_SHOW, 'Show customer details') + '</div>';
-  if (!EM_LOG_SHOW) return '<div id="em-logbox"><section class="card em-log off">' + headLine + '<p class="muted em-log-off">Hidden. Switch on <b>Show customer details</b> to see each email (names, email addresses, subjects, Gmail links). Only when you need it.</p></section></div>';
-  return '<div id="em-logbox"><section class="card em-log">' + headLine +
+  const sw = (id, checked, text, disabled) => '<label class="em-switch"><input type="checkbox" role="switch" id="' + id + '"' + (checked ? ' checked' : '') + (disabled ? ' disabled' : '') + '><span class="em-switch-ui" aria-hidden="true"></span><span>' + text + '</span></label>';
+  const msgLine = EM_LOG_MSG ? '<p class="al-msg ' + (EM_LOG_MSG.ok ? 'good' : 'bad') + '" role="status">' + esc(EM_LOG_MSG.text) + '</p>' : '';
+  const headLine = '<div class="em-log-h"><div class="em-sec-h"><h3>' + (on && log ? 'Email Log' : 'Customer email details') + '</h3><p>' +
+    (on ? (log ? 'Every email of the last ' + days.length + ' days and whether it was counted · private' + (READ_E.logHidden ? ' · ' + READ_E.logHidden + ' promotion, newsletter and automatic emails are never listed' : '') : 'On · loading…')
+      : 'Off for everyone · the dashboard does not receive customer names, email addresses or subjects') + '</p></div>' +
+    sw('eml-enable', on, EM_LOG_BUSY ? 'Saving…' : 'Customer email details: ' + (on ? 'On' : 'Off'), EM_LOG_BUSY) + '</div>';
+  if (!on || !log) return '<div id="em-logbox"><section class="card em-log off">' + headLine + msgLine +
+    '<p class="muted em-log-off">' + (on ? 'Loading the Email Log…' : 'Turn on to see each customer email here (name, email address, subject, order no. and a Gmail link). The setting is saved for everyone who logs in.') + '</p></section></div>';
+  return '<div id="em-logbox"><section class="card em-log">' + headLine + msgLine +
     '<form class="em-bar em-log-bar" id="eml-filters" onsubmit="return false" role="search">' +
     '<div class="em-search"><label for="eml-q" class="sr">Search the Email Log</label><input type="search" id="eml-q" placeholder="Name, email, subject, order no., keyword" value="' + esc(f.q) + '" autocomplete="off"></div>' +
     '<div class="em-sel"><label for="eml-day">Day</label><select id="eml-day">' + opt('', 'All days', f.day) + days.map(d => opt(d, emDay(isoDay(d)), f.day)).join('') + '</select></div>' +
@@ -2139,7 +2150,25 @@ function emailLogCard() {
     '<div id="eml-results"></div></section></div>';
 }
 
-/** Switching 'Show customer details' redraws only the Email Log and the customer list (no chart redraw). */
+/** The Customer email details switch: saves SHOW_EMAIL_LOG in Google, then reloads the numbers (off = the Email Log is dropped at once). */
+async function setCustomerDetails(on) {
+  EM_LOG_BUSY = true; EM_LOG_MSG = null; renderEmailLog();
+  try {
+    const r = await api({ action: 'setEmailLog', on: on, token: session.token() });
+    if (r && r.code === 'LOGIN_NEEDED') { EM_LOG_BUSY = false; session.clear(); showLogin('Your login has ended. Please log in again.'); return; }
+    if (r && r.ok) {
+      EMAIL_LOG_ON = r.emailLogEnabled;
+      EM_LOG_MSG = { ok: true, text: on ? 'Customer email details turned ON. Saved for everyone.' : 'Customer email details turned OFF. The dashboard no longer receives them.' };
+      if (!on && READ_E) READ_E.log = null;
+      TEXT_E = null; EM_LOG_BUSY = false;
+      await load(true); renderEmailLog(); return;
+    }
+    EM_LOG_MSG = { ok: false, text: r && r.code === 'BAD_REQUEST' ? 'The data link is an older version. Please ask IT to make a New version of the Dashboard API.' : 'Could not change it (' + ((r && r.code) || 'error') + '). Please try again.' };
+  } catch (e) { EM_LOG_MSG = { ok: false, text: 'Could not reach the data link: ' + e.message }; }
+  EM_LOG_BUSY = false; renderEmailLog();
+}
+
+/** Redraws only the Email Log card and the customer list (no chart redraw). */
 function renderEmailLog() {
   const box = $('#em-logbox'); if (box) box.outerHTML = emailLogCard();
   const lb = $('#eml-results'); if (lb) lb.innerHTML = emailLogResultsHtml();
@@ -2162,9 +2191,8 @@ const EM_SHORT = { DEFECT: 'Defect', ORDER: 'Order', RETURN: 'Return', SIZING: '
 function emailListHtml(F) {
   const title = EMF.cat ? 'Emails: ' + F.label : 'Customer emails in the shown days';
   const log = READ_E && READ_E.log;
-  if (log && !EM_LOG_SHOW) return '';   // customer details hidden until 'Show customer details' is switched on
   if (log && !EMF.cat) return '';        // only after a category is picked (else it repeats the Email Log)
-  if (!log) return '<section class="card">' + cardHead(title, TAG_E) + '<p class="muted">To see each email here (sender, email address, order number and a Gmail link), the owner must switch on <b>SHOW_EMAIL_LOG</b> in the MCS Dashboard API settings. Until then customer details stay hidden.</p></section>';
+  if (!log) return EMF.cat ? '<section class="card">' + cardHead(title, TAG_E) + '<p class="muted">Customer email details are off. Turn them on in the Customer email details card below to see these emails.</p></section>' : '';
   const days = new Set(F.rows.map(d => d.iso));
   const rows = filterEmailLog(log, { cat: EMF.cat ? EM_SHORT[EMF.cat] : '', counted: 'Yes' }).filter(r => days.has(r.iso));
   const shown = rows.slice(0, EMAIL_CFG.LOG_SHOW_MAX);
@@ -2575,7 +2603,7 @@ function onEmailFilter(e) {
 }
 $('#app').addEventListener('change', e => {   // Email Log switches
   const t = e.target; if (!t || !t.id) return;
-  if (t.id === 'eml-show') { EM_LOG_SHOW = t.checked; store('emLogShow', t.checked ? '1' : '0'); renderEmailLog(); }
+  if (t.id === 'eml-enable') setCustomerDetails(t.checked);
   if (t.id === 'eml-cust') { EML.customersOnly = t.checked; if (t.checked) EML.counted = ''; renderEmailLog(); }
   if (t.id === 'eml-counted') { setTimeout(renderEmailLog, 0); }
 });
