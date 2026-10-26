@@ -544,6 +544,7 @@ td.nowrap { white-space: nowrap; }
 .btn.primary:hover { background: var(--accent); }
 .health { font-size: 13px; color: var(--muted); margin-top: 10px; }
 .health.bad { color: var(--alert); font-weight: 600; }
+.bad-t { color: var(--alert); font-weight: 700; }
 </style>
 </head>
 <body>
@@ -1044,9 +1045,9 @@ function percentile(xs, p) {
 
 /** Totals for a list of days. Volume uses every day; who-answered and reply time use complete days only (rule A2, A3). */
 function aggDaily(list) {
-  const o = { days: list.length, enq: 0, wa: 0, ig: 0, tt: 0, em: 0, completeDays: 0, incomplete: [], bot: 0, staff: 0, none: 0, meds: [] };
+  const o = { days: list.length, enq: 0, wa: 0, ig: 0, tt: 0, em: 0, completeDays: 0, incomplete: [], bot: 0, staff: 0, none: 0, meds: [], in24: 0, due24: 0 };
   list.forEach(d => {
-    o.enq += d.total; o.wa += d.wa; o.ig += d.ig; o.tt += d.tt; o.em += d.em;
+    o.enq += d.total; o.wa += d.wa; o.ig += d.ig; o.tt += d.tt; o.em += d.em; o.in24 += d.in24 || 0; o.due24 += d.due24 || 0;
     if (!d.complete) { o.incomplete.push(d); return; }
     o.completeDays++; o.bot += d.bot; o.staff += d.staff; o.none += d.none;
     if (d.med !== null && d.staff >= CFG.MIN_STAFF_FOR_TIME) o.meds.push(d.med);
@@ -1070,16 +1071,28 @@ function summarizeA(rd, nowMs, key, logStartMs) {
     p.compareText = rangeText(p.compare.start, p.compare.end, false);
   }
   const inR = (s, e) => rd.days.filter(d => d.ms >= s && d.ms < e);
+  // 23 Oct (SleekFlow Data tab): today can be in the list, counted so far ("live"). It is shown, but never compared: the
+  // comparison uses the finished days only, against the same number of days before.
+  const live = rd.days.find(d => d.live && d.ms >= p.main.start && d.ms < mainEnd) || null;
+  const doneEnd = live ? live.ms : mainEnd;
+  if (live && doneEnd > p.main.start && p.compare.end - p.compare.start > doneEnd - p.main.start) {
+    p.compare = { start: p.compare.start, end: p.compare.start + (doneEnd - p.main.start) };
+    p.compareText = rangeText(p.compare.start, p.compare.end, false);
+  }
   const mainList = inR(p.main.start, mainEnd), cmpList = inR(p.compare.start, p.compare.end);
   const cmpExpected = Math.ceil((p.compare.end - p.compare.start) / DAY - 1e-9);
   const main = aggDaily(mainList), cmp = aggDaily(cmpList);
-  const covered = rd.days.length > 0 && cmpExpected > 0 && mainList.length > 0 && p.compare.start >= rd.firstMs && cmpList.length === cmpExpected;
-  const shareOk = covered && main.completeDays >= CFG.MIN_COMPLETE_SHARE * main.days && cmp.completeDays >= CFG.MIN_COMPLETE_SHARE * cmp.days;
+  const doneList = live ? mainList.filter(d => d !== live) : mainList;
+  const done = live ? aggDaily(doneList) : main;
+  const covered = rd.days.length > 0 && cmpExpected > 0 && doneList.length > 0 && p.compare.start >= rd.firstMs && cmpList.length === cmpExpected;
+  // "Who replied" is only compared when both periods were measured the same way (Daily Log same day vs SleekFlow Data so far).
+  const sameWay = doneList.concat(cmpList).every(d => !!d.sf === !!(doneList[0] && doneList[0].sf));
+  const shareOk = covered && sameWay && done.completeDays >= CFG.MIN_COMPLETE_SHARE * done.days && cmp.completeDays >= CFG.MIN_COMPLETE_SHARE * cmp.days;
   const events = uniq(eventsTouching(p.main.start, mainEnd).concat(covered ? eventsTouching(p.compare.start, p.compare.end) : []));
 
   // busiest / quietest weekday: the middle value per weekday, only with enough of each weekday (rule A5)
   let weekday = null;
-  const per = [[], [], [], [], [], [], []]; mainList.forEach(d => per[wall(d.ms).dow].push(d.total));
+  const per = [[], [], [], [], [], [], []]; doneList.forEach(d => per[wall(d.ms).dow].push(d.total));
   if (per.every(a => a.length >= CFG.WEEKDAY_MIN_EACH)) {
     const mid = per.map(a => percentile(a.slice().sort((x, y) => x - y), 0.5));
     const order = [1, 2, 3, 4, 5, 6, 0].sort((a, b) => mid[b] - mid[a]);
@@ -1112,18 +1125,27 @@ function summarizeA(rd, nowMs, key, logStartMs) {
   // things to check
   const alerts = [];
   if (rd.days.length && nowMs - lastEnd > CFG.DAILY_STALE_HOURS * 3600000) alerts.push({ level: 'high', text: 'The Daily Log has not been filled since ' + dayText(rd.lastMs) + '. Please tell ' + CFG.ADMIN_NAME + '.' });
-  if (shareOk && mainList.length >= CFG.NOREPLY_ALERT_DAYS && !events.length && main.who && cmp.who) {
-    const a = 100 * main.none / main.who, b = 100 * cmp.none / cmp.who;
+  if (rd.sfUpdatedMs && nowMs - rd.sfUpdatedMs > CFG.DAILY_STALE_HOURS * 3600000) alerts.push({ level: 'high', text: 'The SleekFlow numbers have not updated since ' + dayText(rd.sfUpdatedMs) + ' ' + String(wall(rd.sfUpdatedMs).h).padStart(2, '0') + ':' + String(wall(rd.sfUpdatedMs).mi).padStart(2, '0') + '. Please tell ' + CFG.ADMIN_NAME + '.' });
+  // 26 Oct (D14): when both periods come from the SleekFlow Data tab, the fair comparison is "staff reply within 24 hours"
+  // (the same yardstick for every day). "No reply yet" is not compared there: recent days have had less time for replies.
+  const sfBoth = shareOk && doneList.length && doneList[0].sf;
+  if (sfBoth && doneList.length >= CFG.NOREPLY_ALERT_DAYS && !events.length && done.due24 && cmp.due24) {
+    const a = 100 * done.in24 / done.due24, b = 100 * cmp.in24 / cmp.due24;
+    if (b - a >= CFG.NOREPLY_ALERT_POINTS) alerts.push({ level: 'mid', text: 'Fewer staff replies within 24 hours: ' + Math.round(a) + '% of enquiries, compared with ' + Math.round(b) + '% in ' + p.compareText + '.' });
+  }
+  if (!sfBoth && shareOk && doneList.length >= CFG.NOREPLY_ALERT_DAYS && !events.length && done.who && cmp.who) {
+    const a = 100 * done.none / done.who, b = 100 * cmp.none / cmp.who;
     if (a - b >= CFG.NOREPLY_ALERT_POINTS) alerts.push({ level: 'mid', text: 'No reply from us is up: ' + Math.round(a) + '% of enquiries, compared with ' + Math.round(b) + '% in ' + p.compareText + '.' });
   }
 
   // the morning line
   let morning = null;
-  if (rd.days.length) {
-    const last = rd.days[rd.days.length - 1]; const yes = toIso(nowMs - DAY) === last.date;
-    morning = (yes ? 'Yesterday (' : 'Latest day in the Daily Log (') + dayText(last.ms) + '): ' + last.total + ' enquiries' + (last.none === null ? '.' : ', ' + last.none + ' with no reply from us.');
+  const finishedDays = rd.days.filter(d => !d.live);
+  if (finishedDays.length) {
+    const last = finishedDays[finishedDays.length - 1]; const yes = toIso(nowMs - DAY) === toIso(last.ms);
+    morning = (yes ? 'Yesterday (' : 'Latest full day (') + dayText(last.ms) + '): ' + last.total + ' enquiries' + (last.none === null ? '.' : ', ' + last.none + (last.sf ? ' not answered yet.' : ' with no reply from us.'));
   }
-  return { p, main, cmp, covered, shareOk, events, weekday, buckets, unit, months, alerts, morning, mainList, lastMs: rd.lastMs, mainEnd };
+  return { p, main, cmp, done, live, covered, shareOk, events, weekday, buckets, unit, months, alerts, morning, mainList, lastMs: rd.lastMs, mainEnd };
 }
 
 /** Days with 10+ WhatsApp enquiries in the Daily Log but no bot chats in the Tracker (rule B7). */
@@ -1202,6 +1224,14 @@ function readEmail(email) {
     if (ok && (out.lastOkMs === null || ms > out.lastOkMs)) out.lastOkMs = ms;
   });
   if (out.lastOkMs === null) out.days.forEach(d => { if (d.updatedMs !== null && (out.lastOkMs === null || d.updatedMs > out.lastOkMs)) out.lastOkMs = d.updatedMs; });
+  // 23 Oct: replied / not replied per day (counts only, from the Email Detail tab via the Dashboard API).
+  out.replies = {};
+  (Array.isArray(email && email.replies) ? email.replies : []).forEach(r => {
+    const ms = isoDay(String(r && r[0] || '').trim()); if (ms === null) return;
+    out.replies[toIso(ms)] = { n: emNum(r[1]) || 0, replied: emNum(r[2]) || 0, waiting: emNum(r[3]) || 0, overdue: emNum(r[4]) || 0, in24: emNum(r[5]) || 0, due24: emNum(r[6]) || 0 };
+  });
+  // 26 Oct: email waiting NOW, each thread once (Dashboard API sfdEmailBacklog). null when the API is older.
+  out.backlog = email && email.backlog && isFinite(email.backlog.n) ? { n: Number(email.backlog.n) || 0, over: Number(email.backlog.over) || 0, days: Number(email.backlog.days) || 30 } : null;
   out.log = null;
   if (email && email.log) {
     const rows = emTable(email.log, EMAIL_CFG.LOG);
@@ -1293,6 +1323,97 @@ function summarizeEmail(re, P, nowMs) {
 }
 /* ==================================================================== EMAIL-LOGIC-END */
 
+/* ==================================================================== SFDATA-LOGIC-START
+   23–26 Oct (Amani, D9–D16): the "SleekFlow Data" and "SleekFlow Waiting Now" tabs in the private sheet (SleekFlowData.gs in the
+   Dashboard API). Per day and channel from 1 Sep 2026, today included ("LIVE"): customer conversations, started by us, answered by
+   staff, answered by bot only, no reply yet, overdue, still open, staff reply within 24 h (out of "checked for 24 h"). The backlog
+   tab = customers waiting for a staff reply NOW, each conversation once. The Daily Log sheet is unchanged (used before 1 Sep and for
+   the staff reply time). Counts only. Tested by google-apps-script/tracker/test-dashboard-page.mjs. */
+const SFD_COLS = { date: 'Date (MYT)', channel: 'Channel', cust: 'Customer conversations', us: 'Started by us', staff: 'Answered by staff', bot: 'Answered by bot only',
+  none: 'No reply yet', overdue: 'Overdue (no reply > 24 h)', open: 'Still open', in24: 'Staff reply within 24 h', due24: 'Checked for 24 h',
+  status: 'Status', upTo: 'Counted up to (MYT)', updated: 'Updated at (MYT)' };
+const SFD_CH = { whatsapp: 'wa', instagram: 'ig', tiktok: 'tt' };
+const SFD_KEYS = ['us', 'staff', 'bot', 'none', 'overdue', 'open', 'in24', 'due24'];
+
+/** The tab's rows → { days: [{ iso, ms, wa, ig, tt, us, staff, bot, none, overdue, open, in24, due24, live, upTo, updatedMs, per }], updatedMs }, or null. */
+function readSleekFlowData(values) {
+  const rows = emTable(values, SFD_COLS);
+  if (!rows) return null;
+  const by = {}; let updatedMs = null;
+  rows.forEach(r => {
+    const ms = isoDay(String(r.date).trim()), ch = SFD_CH[emNorm(r.channel)];
+    if (ms === null || !ch) return;
+    const iso = toIso(ms);
+    const d = by[iso] || (by[iso] = Object.assign({ iso, ms, wa: 0, ig: 0, tt: 0, live: false, upTo: '', updatedMs: null, per: {} }, ...SFD_KEYS.map(k => ({ [k]: 0 }))));
+    const n = k => emNum(r[k]) || 0;
+    d[ch] = n('cust'); SFD_KEYS.forEach(k => { d[k] += n(k); });
+    d.per[ch] = { cust: n('cust') }; SFD_KEYS.forEach(k => { d.per[ch][k] = n(k); });
+    if (/^live/i.test(String(r.status).trim())) { d.live = true; d.upTo = String(r.upTo || '').trim(); }
+    const u = emStampMs(r.updated); if (u !== null) { if (d.updatedMs === null || u > d.updatedMs) d.updatedMs = u; if (updatedMs === null || u > updatedMs) updatedMs = u; }
+  });
+  const days = Object.keys(by).sort().map(k => by[k]);
+  return days.length ? { days, updatedMs } : null;
+}
+
+/** The backlog tab → { wa|ig|tt|all: { n, over, open, closed, bot }, oldestMs, updatedMs }, or null. */
+function readBacklog(values) {
+  const rows = emTable(values, { channel: 'Channel', n: 'Waiting now', over: 'Of which over 24 h', open: 'Open in SleekFlow', closed: 'Closed in SleekFlow', bot: 'Of which bot reply only', oldest: 'Oldest waiting since (MYT)', updated: 'Updated at (MYT)' });
+  if (!rows) return null;
+  const out = { updatedMs: null };
+  rows.forEach(r => {
+    const k = emNorm(r.channel) === 'all' ? 'all' : SFD_CH[emNorm(r.channel)]; if (!k) return;
+    out[k] = { n: emNum(r.n) || 0, over: emNum(r.over) || 0, open: emNum(r.open) || 0, closed: emNum(r.closed) || 0, bot: emNum(r.bot) || 0, oldestMs: emStampMs(r.oldest) };
+    const u = emStampMs(r.updated); if (u !== null && (out.updatedMs === null || u > out.updatedMs)) out.updatedMs = u;
+  });
+  return out.all ? out : null;
+}
+
+/**
+ * The Daily Log with WhatsApp / Instagram / TikTok (and who answered) taken from the SleekFlow Data tab wherever it has that
+ * day, today included. Email (Daily Log column) and the staff reply time stay from the Daily Log. Returns a NEW object.
+ * "Who answered" from the tab = so far, marked sf so it is never compared with Daily Log days.
+ */
+function withSleekFlow(rd, sf) {
+  if (!sf || !sf.days.length) return rd;
+  const by = {}; (rd ? rd.days : []).forEach(d => { by[toIso(d.ms)] = d; });
+  sf.days.forEach(s => {
+    const old = by[s.iso] || null; const em = old ? old.em : 0;
+    const ch = s.wa + s.ig + s.tt;
+    by[s.iso] = { date: old ? old.date : s.iso, ms: s.ms, wa: s.wa, ig: s.ig, tt: s.tt, em, ch: ch + em, total: ch + em, bot: s.bot, staff: s.staff, none: s.none,
+      med: old && !s.live ? old.med : null, complete: true, sf: true, live: s.live, upTo: s.upTo, us: s.us, overdue: s.overdue, open: s.open, in24: s.in24, due24: s.due24, per: s.per };
+  });
+  const days = Object.keys(by).map(k => by[k]).sort((a, b) => a.ms - b.ms);
+  return Object.assign({}, rd || { unreadable: 0 }, { days, firstMs: days[0].ms, lastMs: days[days.length - 1].ms, sfUpdatedMs: sf.updatedMs, sfDays: sf.days.length });
+}
+
+/**
+ * Answered by staff / bot only / within 24 h for the chosen period (SleekFlow Data days + email replied counts), and the
+ * backlog NOW (SleekFlow Waiting Now tab; each conversation once). Email "not replied" = as the email counter last saw it,
+ * last 7 days only. Returns null when there is nothing to show.
+ */
+function pendingSummary(rd, re, r, bl, nowMs) {
+  const sfDays = (rd ? rd.days : []).filter(d => d.sf && d.ms >= r.start && d.ms < r.end);
+  const inR = iso => { const ms = isoDay(iso); return ms !== null && ms >= r.start && ms < r.end; };
+  const emDays = re && re.replies ? Object.keys(re.replies).filter(inR) : [];
+  if (!sfDays.length && !emDays.length && !bl) return null;
+  const rows = [['WhatsApp', 'wa'], ['Instagram', 'ig'], ['TikTok', 'tt']].map(([name, k]) => {
+    const o = { name, key: k, n: 0, staff: 0, bot: 0, none: 0, in24: 0, due24: 0 };
+    sfDays.forEach(d => { const p = (d.per || {})[k]; if (!p) return; o.n += p.cust; o.staff += p.staff; o.bot += p.bot; o.none += p.none; o.in24 += p.in24 || 0; o.due24 += p.due24 || 0; });
+    const b = bl && bl[k]; o.waitNow = b ? b.n : null; o.overNow = b ? b.over : null;
+    return o;
+  });
+  const e = { name: 'Email', key: 'em', n: 0, staff: 0, bot: 0, none: 0, in24: 0, due24: 0, waitNow: null, overNow: null, emailStale: true };
+  emDays.forEach(iso => { const x = re.replies[iso]; e.n += x.n; e.staff += x.replied; e.none += x.waiting; e.in24 += x.in24 || 0; e.due24 += x.due24 || 0; });
+  if (re && re.backlog) { e.waitNow = re.backlog.n; e.overNow = re.backlog.over; e.backlogDays = re.backlog.days; }
+  if (emDays.length || e.waitNow !== null) rows.push(e);
+  const sum = k => rows.reduce((a, x) => a + (x[k] || 0), 0);
+  const total = { n: sum('n'), staff: sum('staff'), bot: sum('bot'), none: sum('none'), in24: sum('in24'), due24: sum('due24') };
+  const now = bl ? { n: bl.all.n, over: bl.all.over, open: bl.all.open, closed: bl.all.closed, bot: bl.all.bot, oldestMs: bl.all.oldestMs, updatedMs: bl.updatedMs,
+    emailN: e.waitNow, emailOver: e.overNow } : null;
+  return { rows, total, now, sfDays: sfDays.length, emDays: emDays.length, emailIncluded: emDays.length > 0 };
+}
+/* ==================================================================== SFDATA-LOGIC-END */
+
 // ============================================================ login + data link (Dashboard API)
 // API_URL '' = the page reads the two published CSVs as before (no login, no email part).
 // API_URL set = the page shows a login; after the password is checked by the Dashboard API (Google Apps Script,
@@ -1349,6 +1470,7 @@ const NOT_A_CONCERN = ['Order found', 'Pick-up open', 'General size guide', 'Sen
 
 let READ_A = null, READ_B = null, TEXT_A = null, TEXT_B = null, ERR_A = null, ERR_B = null, FETCHED_AT = null, LOADING = false, CHARTS = [], RENDER_DAY = null, KEY = null;
 let READ_E = null, TEXT_E = null, ERR_E = null, LOCKED = false;   // email part + login state (Dashboard API only)
+let READ_SF = null, TEXT_SF = null, READ_BL = null;                 // SleekFlow Data + Waiting Now tabs (Dashboard API only; optional until set up)
 let EMAIL_IN_DAILY = 0;                                            // Daily Log days that got their Email number from the email counter
 const SRC_E = 'Email Data', TAG_E = 'Email';
 let ALERTS_TODAY = [], ALERT_STATE = null, ALERT_MSG = null, ALERT_BUSY = false;   // spike warnings (Dashboard API only)
@@ -1412,6 +1534,11 @@ async function loadFromApi() {
   const e = take(em, { text: TEXT_E }, readEmail, 'the email numbers ' + (er.emailTotal || 'did not arrive') + '.');
   if (e.read) { READ_E = e.read; TEXT_E = e.text; ERR_E = READ_E.problems.length ? READ_E.problems.join('; ') + '.' : null; changed = true; }
   else if (!e.same) ERR_E = e.err;
+  // SleekFlow Data tab: optional. Missing (not set up yet) or unreadable → the Daily Log is used as before.
+  const sfText = JSON.stringify(r.sleekflow || null);
+  const sfText2 = sfText + JSON.stringify(r.sleekflowBacklog || null);
+  if (sfText2 !== TEXT_SF) { TEXT_SF = sfText2; try { READ_SF = r.sleekflow ? readSleekFlowData(r.sleekflow) : null; } catch (err) { READ_SF = null; }
+    try { READ_BL = r.sleekflowBacklog ? readBacklog(r.sleekflowBacklog) : null; } catch (err) { READ_BL = null; } changed = true; }
   if (typeof r.emailLogEnabled === 'boolean') EMAIL_LOG_ON = r.emailLogEnabled;
   const al = Array.isArray(r.alerts) ? r.alerts : [];
   if (JSON.stringify(al) !== JSON.stringify(ALERTS_TODAY)) { ALERTS_TODAY = al; changed = true; }
@@ -1429,7 +1556,7 @@ const LOGIN_MSG = {
 function showLogin(message) {
   LOCKED = true; document.body.classList.add('locked');
   CHARTS.forEach(c => c.destroy()); CHARTS = [];
-  READ_A = READ_B = READ_E = null; TEXT_A = TEXT_B = TEXT_E = null; ERR_A = ERR_B = ERR_E = null; RENDERED = false; LAST = null; FETCHED_AT = null;
+  READ_A = READ_B = READ_E = READ_SF = READ_BL = null; TEXT_A = TEXT_B = TEXT_E = TEXT_SF = null; ERR_A = ERR_B = ERR_E = null; RENDERED = false; LAST = null; FETCHED_AT = null;
   ALERTS_TODAY = []; ALERT_STATE = null; ALERT_MSG = null; AL_DRAFT = null; EMAIL_LOG_ON = undefined; EM_LOG_MSG = null;
   $('#period-title').textContent = ''; $('#morning').textContent = ''; $('#meta').textContent = 'Private report. Please log in to see the numbers.'; $('#notices').innerHTML = '';
   $('#app').innerHTML = '<section class="card login">' + cardHead('Log in') + '<p class="muted">This report is for the Machino team only. Enter the dashboard password.</p>' +
@@ -1507,6 +1634,7 @@ function renderMeta(SA, SB) {
   bits.push('Malaysia time');
   if (S) bits.push(S.covered || S.canCompare ? 'Compared with ' + esc(S.p.compareText) : 'No earlier period to compare with');
   if (READ_A && READ_A.lastMs !== null) bits.push('Daily Log filled up to ' + esc(dayText(READ_A.lastMs)));
+  if (READ_SF && READ_SF.updatedMs !== null) bits.push('SleekFlow updated ' + esc(dayText(READ_SF.updatedMs)) + ' ' + esc(clock(READ_SF.updatedMs)));
   if (READ_E && READ_E.lastOkMs !== null) bits.push('Email updated ' + esc(dayText(READ_E.lastOkMs)) + ' ' + esc(clock(READ_E.lastOkMs)));
   $('#meta').innerHTML = bits.join(' · ');
 }
@@ -1539,6 +1667,11 @@ const DEFS = [
   ['Sub-topic', 'The choice inside a topic, for example Wide feet.', 'Details', 'Concern'],
   ['Completed by bot', 'The customer finished with "Nope, that\'s all". No person was needed.', 'RESOLVED BY BOT', 'Resolved by bot'],
   ['Human assistance', 'The menu passed the chat to a person. Often on purpose, for example refunds and damaged items. It is not a failure.', 'RESOLVED BY HUMAN', 'Handed to staff'],
+  ['Answered by staff (SleekFlow Data)', 'A person replied after the customer’s last message that day. Bot messages, auto-replies and automatic acknowledgements are counted apart, never as staff replies. A reply, not proof the problem was solved. From 1 Sep 2026.', 'Answered by staff', 'Agent replied'],
+  ['Staff reply within 24 hours', 'Staff replied within 24 hours of when the customer started waiting: their first message since our last staff reply (a "hello?" chaser does not restart the clock; a bot message does not stop it). Only judged once the 24 hours are over, so every day is measured the same way. Used to compare periods.', 'Staff reply within 24 h ÷ Checked for 24 h', 'SLA 24 h'],
+  ['Waiting for a reply now', 'Customers whose newest message has no staff reply yet, at the last update. Each conversation counts once, however old; waiting time counts from their first message since our last staff reply. A closed conversation is never assumed answered (shown apart). Bot-only replies count as waiting while the chat is still open. Email: each email conversation once.', 'SleekFlow Waiting Now tab', 'Backlog'],
+  ['Still open', 'The conversation is open in SleekFlow right now. Open is not the same as unanswered, and closed is not the same as solved.', 'Still open', 'Open'],
+  ['Started by us', 'Conversations where only we wrote that day (broadcasts, follow-ups). Not counted as enquiries. Enquiries + Started by us is close to SleekFlow\'s "Active conversations" with working hours not applied.', 'Started by us', 'Outbound'],
   ['Customer stopped replying', 'The customer went quiet, got one reminder, and the chat was closed. Includes customers who got their answer and left. It does not mean we stopped replying.', 'CUSTOMER DIDNT REPLY', 'Drop-off'],
 ];
 
@@ -1620,7 +1753,7 @@ function setTab(t, write, focus) {
 }
 
 function render(quiet) {
-  const rd = withEmail(READ_A, READ_E), rb = READ_B; const nowMs = Date.now();
+  const rd = withEmail(withSleekFlow(READ_A, READ_SF), READ_E), rb = READ_B; const nowMs = Date.now();
   EMAIL_IN_DAILY = rd && rd.emailDays ? rd.emailDays : 0;
   RENDER_DAY = toIso(nowMs);
   const logStart = firstMs();
@@ -1631,11 +1764,12 @@ function render(quiet) {
   $('#period-title').textContent = P.title;
   $('#from').value = toIso(P.main.start); $('#to').value = toIso(Math.min(P.main.end, P.today.end) - 1);
   $('#morning').textContent = SA && SA.morning ? SA.morning : '';
-  LAST = { SA, SB, SE };
+  const PEND = SA && READ_SF ? pendingSummary(rd, READ_E, { start: P.main.start, end: SA.mainEnd }, READ_BL, nowMs) : null;
+  LAST = { SA, SB, SE, PEND };
   renderMeta(SA, SB); renderNotices(SA, SB);
 
   const A = partA(SA), B = partB(SB, rb);
-  let h = panel('overview', overview(SA, SB, SE));
+  let h = panel('overview', overview(SA, SB, SE, PEND));
   h += panel('all-channels', A);
   h += panel('bot', B);
   if (apiMode()) h += panel('email', partE(SE));
@@ -1936,20 +2070,60 @@ function totalEnqCard(SA, SE, extra) {
   const emOff = !READ_E;
   const emPartMain = !emOff && emStart !== null && SA.p.main.start < emStart;
   const emPartCmp = !emOff && emStart !== null && SA.p.compare.start < emStart;
+  const d = SA.done || m;                       // finished days only (today so far is never compared)
   let cmp = '';
   if (SA.covered && c.perDay !== null) {
     cmp = emPartCmp && !emPartMain
-      ? esc(SA.p.compareText) + ' (WhatsApp, Instagram, TikTok only: email counting started ' + esc(dayText(emStart)) + '): ' + num(c.enq - c.em) + ', now ' + num(m.enq - m.em)
-      : esc(SA.p.compareText) + ': ' + num(c.enq) + ' (' + Math.round(c.perDay) + ' a day)';
+      ? esc(SA.p.compareText) + ' (WhatsApp, Instagram, TikTok only: email counting started ' + esc(dayText(emStart)) + '): ' + num(c.enq - c.em) + ', now ' + num(d.enq - d.em)
+      : SA.live ? esc(SA.p.compareText) + ': ' + num(c.enq) + ' · same days now: ' + num(d.enq) + ' (today not compared)'
+        : esc(SA.p.compareText) + ': ' + num(c.enq) + ' (' + Math.round(c.perDay) + ' a day)';
   }
   const def = emOff ? '<b>Email not included:</b> the email numbers did not load. WhatsApp + Instagram + TikTok only.'
     : (emPartMain ? 'Email is only included from ' + esc(dayText(emStart)) + ' (when email counting started). ' : '') +
-      'WhatsApp + Instagram + TikTok + Email added up: a customer who used two channels counts twice. Up to the last full day in the Daily Log.';
-  return kpi(Object.assign({ label: 'Total enquiries', value: num(m.enq), sub: num(Math.round(m.perDay)) + ' a day', cmp: cmp, def: def }, extra || {}));
+      'WhatsApp + Instagram + TikTok + Email added up: a customer who used two channels counts twice. ' +
+      (SA.live ? 'Includes today so far (up to ' + esc(SA.live.upTo || 'now') + ').' : 'Up to the last full day counted.');
+  return kpi(Object.assign({ label: 'Total enquiries', value: num(m.enq), sub: d.perDay !== null ? num(Math.round(d.perDay)) + ' a day' : '', cmp: cmp, def: def }, extra || {}));
 }
 
 // ------------------------------------------------------------ Overview
-function overview(SA, SB, SE) {
+/** Today so far, Answered by staff, Waiting for a reply now (all channels; SleekFlow Data tabs + email counter). */
+function sfKpis(SA, SE, PEND) {
+  const live = SA && SA.live ? SA.live : null;
+  const emToday = SE && SE.today ? SE.today.total : 0;
+  const today = live
+    ? kpi({ label: 'Today so far', value: num(live.wa + live.ig + live.tt + emToday), sub: 'WhatsApp ' + num(live.wa) + ' · Instagram ' + num(live.ig) + ' · TikTok ' + num(live.tt) + ' · Email ' + num(emToday),
+      cmp: 'Up to ' + esc(live.upTo || 'now') + (SE && SE.today && SE.today.updatedMs !== null ? ' (email ' + esc(clock(SE.today.updatedMs)) + ')' : ''), src: 'All channels' })
+    : kpi({ label: 'Today so far', value: '–', sub: SA && SA.p.main.end <= dayStart(Date.now()) ? 'Today is not in the chosen period.' : 'Not counted yet today. The first count is at about 9am.', src: 'All channels' });
+  const t = PEND && PEND.total;
+  const answered = t && t.n
+    ? kpi({ label: 'Answered by staff', value: share(t.staff, t.n), sub: num(t.staff) + ' of ' + num(t.n) + ' enquiries',
+      cmp: (t.due24 ? 'Within 24 hours: <b>' + share(t.in24, t.due24) + '</b> · ' : '') + 'bot or auto-reply only: ' + num(t.bot),
+      def: 'A person replied after the customer’s last message that day. Bot messages and automatic acknowledgements are not staff replies.', src: 'All channels' + (PEND.emailIncluded ? '' : ' except Email') })
+    : kpi({ label: 'Answered by staff', value: '–', sub: 'No SleekFlow Data in this period (it starts on 1 Sep 2026).', src: 'All channels' });
+  const n = PEND && PEND.now;
+  const waiting = n
+    ? kpi({ label: 'Waiting for a reply now', value: num(n.n), sub: n.over ? '<b class="bad-t">' + num(n.over) + ' over 24 hours</b>' : 'none over 24 hours',
+      cmp: num(n.open) + ' open · ' + num(n.closed) + ' closed in SleekFlow' + (n.emailN !== null ? ' · plus Email ' + num(n.emailN) : ''),
+      def: 'Customers whose newest message has no staff reply yet, each conversation once (any age). Closed is never assumed answered: closed ones are shown so you can check them.', src: 'WhatsApp · Instagram · TikTok, now' })
+    : kpi({ label: 'Waiting for a reply now', value: '–', sub: 'The backlog appears after the first SleekFlow Data update.', src: 'WhatsApp · Instagram · TikTok, now' });
+  return [today, answered, waiting];
+}
+
+/** Per channel: enquiries, answered by staff, bot only, within 24 h (this period) and waiting now. */
+function pendingCard(PEND) {
+  const r = PEND.rows, t = PEND.total, n = PEND.now;
+  return '<section class="card">' + cardHead('Replies and waiting, by channel', 'All channels · SleekFlow Data + Email', ['all-channels', 'Detail']) +
+    (t.n ? splitBar([['person', t.staff, 'Answered by staff'], ['ok', t.bot, 'Bot or auto-reply only'], ['quiet', t.none, 'No reply yet']], t.n, 'Replies') : '') +
+    '<div class="tw"><table class="topics"><thead><tr><th>Channel</th><th class="num">Enquiries</th><th class="num">Answered by staff</th><th class="num hide-sm">Bot only</th><th class="num">Within 24 h</th><th class="num">Waiting now</th><th class="num">Over 24 h</th></tr></thead><tbody>' +
+    r.map(x => '<tr><td><span class="lab-c">' + key(x.key) + ' <b>' + x.name + '</b></span></td><td class="num">' + num(x.n) + '</td><td class="num">' + np(x.staff, x.n) + '</td><td class="num hide-sm muted">' + num(x.bot) + '</td>' +
+      '<td class="num">' + (x.due24 ? share(x.in24, x.due24) : '–') + '</td><td class="num">' + (x.waitNow === null ? '–' : num(x.waitNow) + (x.emailStale ? '*' : '')) + '</td>' +
+      '<td class="num">' + (x.overNow ? '<b class="bad-t">' + num(x.overNow) + '</b>' : x.overNow === null ? '–' : '0') + '</td></tr>').join('') +
+    '</tbody></table></div><p class="def">Enquiries, answered and within 24 h = the chosen period. Within 24 h = staff replied within 24 hours of when the customer started waiting (their first message since our last staff reply; a chaser does not restart the clock; only counted once the 24 hours are over). ' +
+    'Waiting now = customers waiting for a staff reply at the last update, each conversation once' + (n && n.updatedMs ? ' (' + esc(dayText(n.updatedMs)) + ' ' + esc(clock(n.updatedMs)) + ')' : '') + '.' +
+    (r.some(x => x.emailStale && x.waitNow !== null) ? ' *Email: each email conversation once, newest email in the last ' + (r.find(x => x.key === 'em').backlogDays || 30) + ' days, not replied as the email counter last saw it.' : '') + '</p></section>';
+}
+
+function overview(SA, SB, SE, PEND) {
   const okA = !!(SA && SA.main.days), okB = !!(SB && SB.main.chats);
   const cmpA = SA ? esc(SA.p.compareText) : '', cmpB = SB ? esc(SB.p.compareText) : '';
   // 22 Oct: a period with only today (or later) is not 'empty': the Daily Log is filled each morning for the day before.
@@ -1961,7 +2135,7 @@ function overview(SA, SB, SE) {
   // 1. Four numbers
   let k1;
   if (okA) {
-    k1 = totalEnqCard(SA, SE, { src: TAG_A });
+    k1 = totalEnqCard(SA, SE, { src: READ_SF ? 'All channels' : TAG_A });
   } else k1 = kpi({ label: 'Total enquiries', src: TAG_A, value: '–', sub: notA });
 
   let k2, k3, k4;
@@ -1980,6 +2154,10 @@ function overview(SA, SB, SE) {
     k3 = kpi({ label: 'Human assistance', src: TAG_B, value: '–', sub: notB });
     k4 = kpi({ label: 'Busiest time', src: TAG_B, value: '–', sub: notB });
   }
+
+  // 23 Oct (D12/D13): with the SleekFlow Data tab the top row is one all-channel overview: total, today so far, answered, waiting.
+  // The WhatsApp FAQ numbers stay on their own tab (and in "What customers ask about" below).
+  if (READ_SF) { const k = sfKpis(SA, SE, PEND); k2 = k[0]; k3 = k[1]; k4 = k[2]; }
 
   // 2. Anything unusual
   const al = (SA ? SA.alerts : []).concat(SB ? SB.alerts : []);
@@ -2012,11 +2190,12 @@ function overview(SA, SB, SE) {
   if (!okA) { time = msg('Enquiries over time', notA); chans = msg('Enquiries by channel', notA); }
   else {
     const m = SA.main; const tot = m.wa + m.ig + m.tt + m.em;
-    time = '<section class="card">' + cardHead('Enquiries over time', TAG_A + ' · all channels · per ' + SA.unit, ['all-channels', 'Full detail']) + timeChart(SA, 'cTimeOv') + timeFacts(SA) + '</section>';
+    const tagA = READ_SF ? 'SleekFlow Data + Email' : TAG_A;
+    time = '<section class="card">' + cardHead('Enquiries over time', tagA + ' · all channels · per ' + SA.unit, ['all-channels', 'Full detail']) + timeChart(SA, 'cTimeOv') + timeFacts(SA) + '</section>';
     const last = SA.mainList[SA.mainList.length - 1];
-    chans = '<section class="card">' + cardHead('Enquiries by channel', TAG_A + ' · ' + num(tot) + ' enquiries', ['all-channels', 'Detail']) +
+    chans = '<section class="card">' + cardHead('Enquiries by channel', tagA + ' · ' + num(tot) + ' enquiries', ['all-channels', 'Detail']) +
       rankBars(activeChannels(SA).map(c => ({ name: c[0], sub: Math.round(m[c[1]] / m.days) + ' a day', n: m[c[1]], p: pct(m[c[1]], tot), c: c[1] }))) +
-      (last ? '<div class="reply"><p class="main">Latest day (' + esc(dayText(last.ms)) + '): <b>' + num(last.total) + '</b> enquiries</p><div class="legend">' + activeChannels(SA).map(c => '<span><i style="background:var(--' + c[1] + ')"></i>' + c[0] + ' <b>' + num(last[c[1]]) + '</b></span>').join('') + '</div></div>' : '') +
+      (last ? '<div class="reply"><p class="main">' + (last.live ? 'Today so far (up to ' + esc(last.upTo || 'now') + ')' : 'Latest day (' + esc(dayText(last.ms)) + ')') + ': <b>' + num(last.total) + '</b> enquiries</p><div class="legend">' + activeChannels(SA).map(c => '<span><i style="background:var(--' + c[1] + ')"></i>' + c[0] + ' <b>' + num(last[c[1]]) + '</b></span>').join('') + '</div></div>' : '') +
       '<p class="def">Instagram and TikTok have no FAQ menu, only automatic replies.</p></section>';
   }
 
@@ -2030,6 +2209,7 @@ function overview(SA, SB, SE) {
   }
   let replied;
   if (!okA) replied = msg('Who replied to enquiries', notA);
+  else if (READ_SF && PEND) replied = pendingCard(PEND);
   else {
     const m = SA.main; const rows = [['ok', m.bot, 'Bot or auto-reply only'], ['person', m.staff, 'Answered by staff'], ['quiet', m.none, 'No reply from us (same day)']];
     replied = '<section class="card">' + cardHead('Who replied to enquiries', TAG_A, ['all-channels', 'Detail'], '(All channels: every customer on WhatsApp, Instagram and TikTok, and who answered them that day)') + (m.who ? splitBar(rows, m.who, 'Who replied') : '') +
@@ -2037,6 +2217,9 @@ function overview(SA, SB, SE) {
       (m.reply && m.reply.n >= 3 ? '<div class="reply"><p class="main">Staff reply time: <b>' + m.reply.mid + ' min</b> <span class="muted">(typical day)</span></p></div>' : '') + '</section>';
   }
 
+  // 23 Oct (D12): with the SleekFlow Data tab, the big picture comes first: numbers → volume → answered / waiting (full width) → topics → email.
+  if (READ_SF && PEND && okA) return (alertsOn() ? spikeBanner() : '') + '<div class="kpis">' + k1 + k2 + k3 + k4 + '</div>' + strip + '<div class="cols c21">' + time + chans + '</div>' + replied +
+    '<div class="cols c32">' + ask + concerns + '</div>' + (apiMode() ? emailOverview(SE) : '') + ended;
   return (alertsOn() ? spikeBanner() : '') + '<div class="kpis">' + k1 + k2 + k3 + k4 + '</div>' + strip + '<div class="cols c32">' + ask + concerns + '</div>' + (apiMode() ? emailOverview(SE) : '') + '<div class="cols c21">' + time + chans + '</div>' + '<div class="cols c11">' + ended + replied + '</div>';
 }
 
@@ -2311,11 +2494,20 @@ function partA(SA) {
   if (!SA) return head + msg('Summary', ERR_A ? 'The ' + SRC_A + ' could not be loaded. The ' + SRC_B + ' is still correct.' : READ_A ? 'No Daily Log days yet.' : 'Loading the Daily Log…');
   const m = SA.main, c = SA.cmp;
   if (!m.days) return head + msg('Summary', 'No Daily Log days in this period. It started on ' + esc(dayText(READ_A.firstMs)) + ' ' + wall(READ_A.firstMs).y + ' and is filled up to ' + esc(dayText(READ_A.lastMs)) + ' ' + wall(READ_A.lastMs).y + '.');
-  const src = TAG_A + up;
-  const wasShare = cn => (SA.shareOk && c.who ? esc(SA.p.compareText) + ': ' + npText(cn, c.who) : '');
+  // 26 Oct: days from the SleekFlow Data tab (1 Sep onwards) are labelled as such, so the source line is not "Daily Log" for them.
+  const src = SA.mainList.some(d => d.sf) ? 'SleekFlow Data + Email' + (READ_SF && READ_SF.updatedMs !== null ? ' · updated ' + dayText(READ_SF.updatedMs) + ' ' + clock(READ_SF.updatedMs) : '') : TAG_A + up;
+  // 26 Oct: for SleekFlow Data periods the shares are "so far" (recent days have had less time for replies), so they are NOT compared;
+  // the fair comparison is "staff reply within 24 hours" (every day measured the same way), shown under the bar.
+  const sfCmp = SA.mainList.some(d => d.sf);
+  const wasShare = cn => (!sfCmp && SA.shareOk && c.who ? esc(SA.p.compareText) + ': ' + npText(cn, c.who) : '');
 
   // Summary
-  const three = [
+  const sfMode = SA.mainList.some(d => d.sf);   // 26 Oct: SleekFlow Data days = replies so far (not "same day")
+  const three = sfMode ? [
+    ['ok', m.bot, 'Bot or auto-reply only', 'Only a bot or automatic message after the customer’s last message. Not a staff reply.', c.bot],
+    ['person', m.staff, 'Answered by staff', 'A person replied after the customer’s last message that day.', c.staff],
+    ['quiet', m.none, 'No reply yet', 'Nothing from us after the customer’s last message (so far).', c.none],
+  ] : [
     ['ok', m.bot, 'Bot or auto-reply only', 'No staff reply that day. Not proof it was solved.', c.bot],
     ['person', m.staff, 'Answered by staff', 'A staff member replied at least once.', c.staff],
     ['quiet', m.none, 'No reply from us (same day)', 'Nobody on our side replied that day.', c.none],
@@ -2324,6 +2516,12 @@ function partA(SA) {
   s1 += '<div class="kpis">' + totalEnqCard(SA, LAST && LAST.SE, { def: 'Customers who messaged us: one customer, one channel, one day = 1. ' + (READ_E ? 'WhatsApp + Instagram + TikTok + Email added up, so a customer on two channels counts twice.' : '<b>Email not included:</b> the email numbers did not load.') }) +
     three.map(x => kpi({ label: x[2], dot: x[0], value: m.who ? pct(x[1], m.who) : '–', sub: num(x[1]) + ' of ' + num(m.who), cmp: wasShare(x[4]), def: x[3] })).join('') + '</div>';
   if (m.who) s1 += splitBar(three, m.who, 'Who replied');
+  if (sfCmp && (SA.done || m).due24) {
+    const dn = SA.done || m;
+    s1 += '<div class="reply"><p class="main">Staff reply within 24 hours: <b>' + share(dn.in24, dn.due24) + '</b> <span class="muted">(' + num(dn.in24) + ' of ' + num(dn.due24) + ' checked' + (SA.live ? ', today not included' : '') + ')</span>' +
+      (SA.covered && c.due24 ? ' · ' + esc(SA.p.compareText) + ': <b>' + share(c.in24, c.due24) + '</b>' : '') + '</p>' +
+      '<p class="def">The fair way to compare periods: each customer wait counts once its 24 hours are over. The shares above are "so far" and are not compared.</p></div>';
+  }
   if (m.reply && m.reply.n >= 3) s1 += '<div class="reply"><p class="main">Staff reply time: <b>' + m.reply.mid + ' min</b> <span class="muted">(typical day; half of days between ' + m.reply.lo + ' and ' + m.reply.hi + ' min)</span></p><p class="def">Clock time, nights and weekends included, same-day replies only. It shows how long customers wait, not any one person\'s speed.</p></div>';
   else s1 += '<p class="foot">Staff reply time: not enough days with staff replies in this period yet.</p>';
   if (m.completeDays < m.days) s1 += '<p class="foot">Shares and reply time use ' + m.completeDays + ' of ' + m.days + ' days. ' + esc(joinAnd(m.incomplete.map(x => dayText(x.ms)))) + ' ' + (m.incomplete.length === 1 ? 'is' : 'are') + ' incomplete in the sheet.</p>';
@@ -2340,8 +2538,8 @@ function partA(SA) {
 
   // Over time
   let s3 = '<section class="card">' + cardHead('Enquiries over time', src + ' · per ' + SA.unit) + timeChart(SA, 'cTime') + timeFacts(SA);
-  if (SA.months.length) s3 += '<h4 class="subh">Month by month</h4><div class="tw"><table><thead><tr><th>Month</th><th class="num">Enquiries</th><th class="num">A day</th><th class="num">Bot or auto-reply only</th><th class="num">Answered by staff</th><th class="num">No reply from us</th><th class="num">Staff reply time</th></tr></thead><tbody>' +
-    SA.months.map(r => '<tr><td><b>' + esc(monthLabel(r.label)) + '</b></td><td class="num"><b>' + num(r.enq) + '</b></td><td class="num">' + Math.round(r.perDay) + '</td><td class="num">' + np(r.bot, r.who) + '</td><td class="num">' + np(r.staff, r.who) + '</td><td class="num">' + np(r.none, r.who) + '</td><td class="num">' + (r.reply && r.reply.n >= 3 ? r.reply.mid + ' min' : '–') + '</td></tr>').join('') + '</tbody></table></div>' +
+  if (SA.months.length) s3 += '<h4 class="subh">Month by month</h4><div class="tw"><table><thead><tr><th>Month</th><th class="num">Enquiries</th><th class="num">A day</th><th class="num">Bot or auto-reply only</th><th class="num">Answered by staff</th><th class="num">' + (SA.months.some(r => r.due24) ? 'Within 24 h' : 'No reply from us') + '</th><th class="num">Staff reply time</th></tr></thead><tbody>' +
+    SA.months.map(r => '<tr><td><b>' + esc(monthLabel(r.label)) + '</b></td><td class="num"><b>' + num(r.enq) + '</b></td><td class="num">' + Math.round(r.perDay) + '</td><td class="num">' + np(r.bot, r.who) + '</td><td class="num">' + np(r.staff, r.who) + '</td><td class="num">' + (r.due24 ? share(r.in24, r.due24) : np(r.none, r.who)) + '</td><td class="num">' + (r.reply && r.reply.n >= 3 ? r.reply.mid + ' min' : '–') + '</td></tr>').join('') + '</tbody></table></div>' +
     '<p class="def">Shares are out of the enquiries on complete days. The current month counts the days filled so far.</p>';
   s3 += '</section>';
   return head + alertBox(SA.alerts) + s1 + s3 + s2;
