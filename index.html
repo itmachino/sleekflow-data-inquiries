@@ -2850,7 +2850,6 @@ async function api(body) {
   ];
   var EMAIL_DEFS = [
     ['Email enquiry', 'One email conversation in which a customer wrote at least once that day. Three emails in the same conversation on one day = 1. Our replies, staff, Machino Singapore, couriers, automatic emails, spam, promotions, job applications, sales pitches and sponsorship requests are not counted.'],
-    ['PostCo return request', 'A return or exchange request made through the PostCo portal. Counted on its own, never inside the email enquiries.'],
     ['Contact form', 'A message from the website contact form (Shopify). It is a customer email, so it is counted inside the email enquiries and also shown on its own.'],
     ['Email category', 'What the email is about, from keywords in the subject and first lines (English and Malay). A guide, not exact: unclear ones go to Other / Unknown.'],
     ['Today so far (email)', 'Today\'s count up to the last automatic run (about 9am, 12pm, 4pm and 8pm). It goes up during the day.'],
@@ -2905,7 +2904,7 @@ async function api(body) {
           !f ? plain('The sources', [
             [SRC_A, 'All channels (WhatsApp, Instagram, TikTok). Counts customers once a day and who replied to them. From 1 Sep 2026 the SleekFlow Data tab is used (updated about 4 times a day, today included).'],
             [SRC_B, 'WhatsApp only. One row per chat with the FAQ menu: what the customer picked and how the chat ended. Instagram and TikTok have no FAQ menu.'],
-            ['Email Data', 'Customer emails to the HELLO mailbox, counted automatically about 4 times a day (9am, 12pm, 4pm, 8pm). PostCo return requests are counted separately.'],
+            ['Email Data', 'Customer emails to the HELLO mailbox, counted automatically about 4 times a day (9am, 12pm, 4pm, 8pm). PostCo return requests are not shown: the other team handles them.'],
             ['They measure different things', 'No number on this page adds or divides one by the other, except where it says "added up".']]) : null,
           !f ? plain('How numbers are written', [
             ['154 (28%)', 'The number first, then its share in brackets. The card or column title says what the share is out of.'],
@@ -2949,7 +2948,7 @@ async function api(body) {
     topics: 'WhatsApp FAQ chats by the topic the customer picked. A chat can pick more than one topic. “was” = the comparison period.',
     concerns: 'The sub-topics customers picked most inside a topic, leaving out routine choices that are not problems.',
     ended: 'How WhatsApp FAQ chats ended in this period (WhatsApp only).',
-    email: 'HELLO mailbox enquiries, counted about 4 times a day. PostCo returns are counted separately.'
+    email: 'HELLO mailbox enquiries, counted about 4 times a day. PostCo returns are not shown (handled by the other team).'
   };
 
   /** The "Total enquiries" number, with the same like-for-like comparison rules as the old page (22 Oct accuracy review). */
@@ -3198,9 +3197,9 @@ async function api(body) {
         col({ gap: 16 },
           h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16 } },
             mini('Today so far', SE.today ? fmt(SE.today.total) : DASH, SE.today ? (SE.today.updatedMs !== null ? 'at ' + clk(SE.today.updatedMs) : 'counted today') : 'no count yet today'),
-            mini('Yesterday', SE.yesterday ? fmt(SE.yesterday.total) : DASH, SE.yesterday ? 'PostCo ' + fmt(SE.yesterday.postco) : 'not counted'),
+            mini('Yesterday', SE.yesterday ? fmt(SE.yesterday.total) : DASH, SE.yesterday ? 'full day' : 'not counted'),
             mini(V.today ? 'Today (period)' : 'This period', fmt(m.total), (m.perDay !== null ? Math.round(m.perDay * 10) / 10 + ' a day' : '') + (SE.canCompare && !V.today ? ' · ' + SE.p.compareText + ': ' + fmt(SE.cmp.total) : '')),
-            mini('PostCo returns (separate)', fmt(m.postco))),
+            mini('Contact form', fmt(m.contact), 'website form, inside the enquiries')),
           h('button', { type: 'button', className: 'ov-link', onClick: function () { go('email'); } }, 'Open Email Data', h(M.Icon, { name: 'chevron-right', size: 14 }))),
         col({ gap: 10 }, h('span', { style: S.label }, 'What emails are about'),
           SE.catRows.length ? RankBars(SE.catRows.map(function (r) { return { l: r.name, v: r.n, note: SE.canCompare && !V.today ? 'was ' + fmt(r.was) : null }; }), m.cats.total, 'var(--ch-email)') : Note('No email categories in this period yet.'))));
@@ -3558,13 +3557,14 @@ async function api(body) {
     function setL(patch) { EML = Object.assign({}, lf, patch); setLraw(EML); }
     var okNow = SE && !SE.failed && !SE.stale && SE.lastOkMs !== null;
     var pill = !SE ? null : h(M.StatusPill, { tone: okNow ? 'good' : 'warning' }, (okNow ? 'Up to date · last count ' : 'Not up to date · last count ') + stamp(SE.lastOkMs));
-    var head = PageHead({ title: 'Email Data', lead: 'Customer emails to the HELLO mailbox, counted automatically about 4 times a day (9am, 12pm, 4pm, 8pm). One enquiry = one email conversation with a customer that day. PostCo return requests are counted separately.',
+    var head = PageHead({ title: 'Email Data', lead: 'Customer emails to the HELLO mailbox, counted automatically about 4 times a day (9am, 12pm, 4pm, 8pm). One enquiry = one email conversation with a customer that day. PostCo returns are not shown here: the other team handles them.',
       lines: [(V.today ? 'Today so far · ' + dayText(V.nowMs) : V.P.title) + ' · ' + updatedLine(V) + ' · Source: Email Data'], actions: PeriodActions({ V: V, openHelp: p.openHelp }) });
     var notices = h(FloatStack, { items: buildNotices(V, { noSleekFlow: true, noFaq: true }) });
     var top = h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } }, head, pill ? h('div', null, pill) : null);
 
     /* the Customer email details card (one switch, saved for everyone; off = the server sends no names, addresses or subjects) */
-    var log = re && re.log, on = D.emailLogOn === true || (D.emailLogOn === undefined && !!log);
+    /* PostCo rows ("Separate") are never listed: the other team handles them (Amani 27 Oct). Display only. */
+    var log = re && re.log ? re.log.filter(function (r) { return !/^separate/i.test(String(r.counted || '')); }) : null, on = D.emailLogOn === true || (D.emailLogOn === undefined && !!log);
     var logDays = log ? uniq(log.map(function (r) { return r.iso; })).sort().reverse() : [];
     var lrows = log ? filterEmailLog(log, lf) : [], shownL = lrows.slice(0, EMAIL_CFG.LOG_SHOW_MAX);
     var msgLine = D.emLogMsg ? h('p', { className: 'lg-msg ' + (D.emLogMsg.ok ? 'lg-msg--info' : 'lg-msg--bad'), role: 'status' }, D.emLogMsg.text) : null;
@@ -3575,9 +3575,9 @@ async function api(body) {
             h(M.SearchInput, { value: lf.q, onChange: function (e) { setL({ q: e.target.value }); }, onClear: function () { setL({ q: '' }); }, placeholder: 'Name, email, subject, order no., keyword', 'aria-label': 'Search the Email Log' }),
             h(M.Select, { value: lf.day, onChange: function (e) { setL({ day: e.target.value }); }, options: [{ value: '', label: 'All days' }].concat(logDays.map(function (d) { return { value: d, label: emDayLabel(isoDay(d)) }; })), 'aria-label': 'Day' }),
             h(M.Select, { value: lf.cat, onChange: function (e) { setL({ cat: e.target.value }); }, options: [{ value: '', label: 'All categories' }].concat(['Defect', 'Order', 'Return', 'Sizing', 'Store', 'Other'].map(function (x) { return { value: x, label: x }; })), 'aria-label': 'Log category' }),
-            h(M.Select, { value: lf.counted, onChange: function (e) { setL({ counted: e.target.value }); }, options: [{ value: '', label: 'Counted? All' }, { value: 'Yes', label: 'Yes (customer enquiry)' }, { value: 'No', label: 'No (left out)' }, { value: 'Separate', label: 'Separate (PostCo)' }], 'aria-label': 'Counted?' }),
+            h(M.Select, { value: lf.counted, onChange: function (e) { setL({ counted: e.target.value }); }, options: [{ value: '', label: 'Counted? All' }, { value: 'Yes', label: 'Yes (customer enquiry)' }, { value: 'No', label: 'No (left out)' }], 'aria-label': 'Counted?' }),
             h(M.Button, { variant: 'ghost', onClick: function () { EML = Object.assign({}, EML_DEFAULT); setLraw(EML); } }, 'Reset')),
-          h(M.Toggle, { label: 'Customers only', description: lf.customersOnly && !lf.counted ? 'Showing customer enquiries only. Switch off to also see left-out emails and PostCo.' : 'Showing every email, also the ones that were not counted.', checked: lf.customersOnly && !lf.counted, onChange: function (v) { setL(v ? { customersOnly: true, counted: '' } : { customersOnly: false }); } }),
+          h(M.Toggle, { label: 'Customers only', description: lf.customersOnly && !lf.counted ? 'Showing customer enquiries only. Switch off to also see left-out emails.' : 'Showing every email, also the ones that were not counted.', checked: lf.customersOnly && !lf.counted, onChange: function (v) { setL(v ? { customersOnly: true, counted: '' } : { customersOnly: false }); } }),
           h('p', { className: 'ov-note', role: 'status', 'aria-live': 'polite' }, lrows.length > shownL.length ? 'Showing the newest ' + shownL.length + ' of ' + fmt(lrows.length) + ' matching emails. Search to narrow down.' : fmt(lrows.length) + ' of ' + fmt(log.length) + ' emails match.'),
           shownL.length ? EmailRows(shownL, true) : h(M.EmptyState, { kind: 'no-results', title: 'No emails match' }, 'Try a different word or press Reset.'));
     var logCard = Card(on && log ? 'Email Log' : 'Customer email details', 'Names, addresses and subjects of the emails behind the counts. One switch for everyone: when it is off, the server never sends names or addresses.',
@@ -3587,7 +3587,7 @@ async function api(body) {
       h('ul', { className: 'pg-how-list' },
         h('li', null, 'Source: the private Google Sheet “Machino CS — Private Data” (' + (log ? 'counts + customer email details (switched on)' : 'counts only; customer email details are off') + ').'),
         h('li', null, 'One enquiry = one email conversation with at least one customer message that day. Promotions, newsletters, automatic emails, couriers and staff are left out.'),
-        h('li', null, 'PostCo return requests are counted separately, never inside the email enquiries.'),
+        h('li', null, 'PostCo return requests are not shown on this dashboard: the other team handles them. They were never inside the email enquiries.'),
         h('li', null, '“Today so far” is replaced by each new count (about 9am, 12pm, 4pm and 8pm).')),
       h('dl', { className: 'pg-how' }, EMAIL_DEFS.map(function (x) { return h('div', { key: x[0] }, h('dt', null, x[0]), h('dd', null, x[1])); })));
 
@@ -3598,19 +3598,18 @@ async function api(body) {
     var kp = [
       { label: 'Email enquiries', value: fmt(m.total), tip: TIP.email, chip: SE.canCompare && !V.today ? chip(m.total, c.total, { neutral: true }) : null, note: m.perDay !== null ? 'About ' + Math.round(m.perDay * 10) / 10 + ' a day' + (m.includesToday ? ', incl. today so far' : '') : V.today ? 'So far today' : '', cmp: SE.canCompare && !V.today ? SE.p.compareText + ': ' + fmt(c.total) : '' },
       { label: 'Today so far', value: SE.today ? fmt(SE.today.total) : DASH, tip: 'Today’s email count up to the last automatic run (about 9am, 12pm, 4pm and 8pm). It goes up during the day.', note: SE.today ? (SE.today.updatedMs !== null ? 'Counted at ' + clk(SE.today.updatedMs) : 'Counted today') : 'No count yet today' },
-      { label: 'PostCo returns', value: fmt(m.postco), tip: 'A return or exchange request made through the PostCo portal. Counted on its own, never inside the email enquiries.', note: 'Counted separately', cmp: SE.canCompare && !V.today ? SE.p.compareText + ': ' + fmt(c.postco) : '' },
       { label: 'Contact form', value: fmt(m.contact), tip: 'A message from the website contact form (Shopify). It is a customer email, so it is counted inside the email enquiries and also shown on its own.', note: 'Website form, inside the enquiries' }];
 
     var F = filterEmailDays(SE, re, f), todayIso = toIso(Date.now());
     /* trend: every day of the period; a day with no count yet is a gap, never a made-up 0 */
     var by = {}; F.rows.forEach(function (d) { by[d.iso] = d; });
     var end = Math.min(SE.p.main.end, SE.p.today.end), days = [];
-    for (var t = SE.p.main.start; t < end; t += DAY) { var d0 = by[toIso(t)]; days.push({ ms: t, partial: toIso(t) === todayIso, v: d0 ? { n: d0.n, post: f.cat ? 0 : d0.postco } : {} }); }
-    var grain = chooseGrain(days.length), bars = makeBars(days, ['n', 'post'], grain);
-    var EMK = { n: 'var(--ch-email)', post: 'var(--chart-compare)' }, EMN = { n: F.label, post: 'PostCo returns' };
-    var trend = Card((grain === 'week' ? F.label + ' per week' : F.label + ' per day'), 'Customer emails counted per day' + (f.cat ? ' (category filter on)' : ', with PostCo return requests (counted separately) on top') + '. A day with no count yet has no bar.', null, [
-      h(M.Legend, { items: [{ label: F.label, color: 'ch-email', value: fmt(F.n) }].concat(f.cat ? [] : [{ label: 'PostCo returns', color: 'chart-compare', value: fmt(F.postco) }]) }),
-      days.length ? h(TrendChart, { key: 'em' + V.key + f.cat + grain, vis: f.cat ? ['n'] : ['n', 'post'], bars: bars, grain: grain, rangeLabel: rangeText(SE.p.main.start, end, false), height: 220, colorOf: function (k) { return EMK[k]; }, nameOf: function (k) { return EMN[k]; }, noun: 'Email' }) : ChartFallback()]);
+    for (var t = SE.p.main.start; t < end; t += DAY) { var d0 = by[toIso(t)]; days.push({ ms: t, partial: toIso(t) === todayIso, v: d0 ? { n: d0.n } : {} }); }
+    var grain = chooseGrain(days.length), bars = makeBars(days, ['n'], grain);
+    var EMK = { n: 'var(--ch-email)' }, EMN = { n: F.label };
+    var trend = Card((grain === 'week' ? F.label + ' per week' : F.label + ' per day'), 'Customer emails counted per day' + (f.cat ? ' (category filter on)' : '') + '. A day with no count yet has no bar.', null, [
+      h(M.Legend, { items: [{ label: F.label, color: 'ch-email', value: fmt(F.n) }] }),
+      days.length ? h(TrendChart, { key: 'em' + V.key + f.cat + grain, vis: ['n'], bars: bars, grain: grain, rangeLabel: rangeText(SE.p.main.start, end, false), height: 220, colorOf: function (k) { return EMK[k]; }, nameOf: function (k) { return EMN[k]; }, noun: 'Email' }) : ChartFallback()]);
     var wk = F.rows.slice().sort(function (a, b) { return a.iso < b.iso ? 1 : -1; }).slice(0, 7), done = F.rows.filter(function (d) { return d.iso !== todayIso; });
     var avg = done.length ? Math.round(10 * done.reduce(function (a, d) { return a + d.n; }, 0) / done.length) / 10 : null;
     var busiest = done.reduce(function (b, d) { return !b || d.n > b.n ? d : b; }, null), max7 = Math.max.apply(null, wk.map(function (d) { return d.n; }).concat([1]));
@@ -3619,13 +3618,12 @@ async function api(body) {
     })), Note((avg !== null ? 'Average ' + avg + ' a day' : '') + (busiest && busiest.n ? ' · busiest ' + emDayLabel(busiest.ms) + ' (' + fmt(busiest.n) + ')' : ''))] : [Note('No days match these filters.')]);
 
     /* filter bar */
-    var moreN = (f.min ? 1 : 0) + (f.postco ? 1 : 0) + (f.contact ? 1 : 0), moreShown = moreOpen || moreN > 0;
+    var moreN = (f.min ? 1 : 0) + (f.contact ? 1 : 0), moreShown = moreOpen || moreN > 0;
     var active = [];
     if (f.q) active.push(['q', 'Search: “' + f.q + '”']);
     if (f.cat) active.push(['cat', 'Category: ' + (EMAIL_CFG.CATEGORIES.find(function (x) { return x[0] === f.cat; }) || [0, f.cat])[1]]);
     if (f.days !== 'all') active.push(['days', f.days === 'weekday' ? 'Weekdays' : 'Weekends']);
     if (f.min) active.push(['min', 'At least ' + f.min + ' a day']);
-    if (f.postco) active.push(['postco', 'Has PostCo returns']);
     if (f.contact) active.push(['contact', 'Has contact-form messages']);
     var filterBar = h('section', { className: 'mcs-card pg-filterbar', 'aria-label': 'Email filters' },
       h('div', { className: 'pg-filters' },
@@ -3636,7 +3634,6 @@ async function api(body) {
         h(M.Button, { variant: 'secondary', icon: 'filter', 'aria-expanded': moreShown, onClick: function () { setMore(!moreOpen); } }, 'More filters', moreN ? h('span', { className: 'pg-badge' }, moreN) : null)),
       moreShown ? h('div', { className: 'pg-more' },
         h(M.Field, { label: 'At least (a day)' }, h(M.Input, { type: 'number', min: 0, step: 1, value: f.min, placeholder: '0', onChange: function (e) { setF({ min: e.target.value }); } })),
-        h(M.Toggle, { label: 'Has PostCo returns', checked: f.postco, onChange: function (v) { setF({ postco: v }); } }),
         h(M.Toggle, { label: 'Has contact-form messages', checked: f.contact, onChange: function (v) { setF({ contact: v }); } })) : null,
       h('div', { className: 'pg-filter-foot', role: 'status', 'aria-live': 'polite' },
         h('span', { style: S.label }, 'Showing ' + F.rows.length + ' of ' + F.of + ' days · ' + fmt(F.n) + ' ' + F.label.toLowerCase() + (active.length ? ' · ' + active.length + ' filter' + (active.length === 1 ? '' : 's') + ' on' : '')),
@@ -3672,13 +3669,12 @@ async function api(body) {
       { key: 'n', header: F.label, numeric: true, render: function (x) { return fmt(x.n); } },
       { key: 'bar', header: '', hideOnPhone: true, render: function (x) { return h('div', { className: 'ov-track', style: { width: 100, height: 8 } }, h('span', { style: { width: (x.n / maxD * 100) + '%', background: 'var(--ch-email)', opacity: 1 } })); } }
     ].concat(f.cat ? [{ key: 'all', header: 'All', numeric: true, render: function (x) { return fmt(x.total); } }] : []).concat([
-      { key: 'post', header: 'PostCo', numeric: true, render: function (x) { return fmt(x.postco); } },
       { key: 'form', header: 'Form', numeric: true, render: function (x) { return fmt(x.contact); } },
       { key: 'top', header: 'Top category', hideOnPhone: true, render: function (x) { return x.top || DASH; } },
       { key: 'at', header: 'Counted', hideOnPhone: true, render: function (x) { return x.updatedMs !== null ? (toIso(x.updatedMs) === x.iso ? '' : dayText(x.updatedMs) + ', ') + clk(x.updatedMs) : DASH; } }]);
     var busiestD = F.rows.filter(function (d) { return d.iso !== todayIso; }).reduce(function (b, d) { return !b || d.n > b.n ? d : b; }, null);
     var dayFold = h('details', { className: 'mcs-card pg-fold' }, h('summary', null, 'Day by day', h('span', { style: Object.assign({ marginLeft: 8 }, S.caption) }, F.rows.length ? F.rows.length + ' day' + (F.rows.length === 1 ? '' : 's') + ' · ' + fmt(F.n) + ' ' + F.label.toLowerCase() + (busiestD && busiestD.n ? ' · busiest ' + emDayLabel(busiestD.ms) + ' (' + fmt(busiestD.n) + ')' : '') : 'No days match these filters')),
-      F.rows.length ? h('div', { className: 'pg-scrollbox' }, h(M.DataTable, { columns: dayCols, rows: F.rows, rowKey: function (x) { return x.iso; }, caption: 'Email, day by day', footer: 'Total: ' + fmt(F.n) + ' ' + F.label.toLowerCase() + ' · ' + fmt(F.postco) + ' PostCo returns · ' + fmt(F.contact) + ' contact-form messages. “Form” = website contact form. Customer names, addresses and subjects stay in the private sheet' + (log ? ' (or in the Email Log)' : '') + '.' }))
+      F.rows.length ? h('div', { className: 'pg-scrollbox' }, h(M.DataTable, { columns: dayCols, rows: F.rows, rowKey: function (x) { return x.iso; }, caption: 'Email, day by day', footer: 'Total: ' + fmt(F.n) + ' ' + F.label.toLowerCase() + ' · ' + fmt(F.contact) + ' contact-form messages. “Form” = website contact form. Customer names, addresses and subjects stay in the private sheet' + (log ? ' (or in the Email Log)' : '') + '.' }))
         : Note('No days match these filters. Try fewer filters or press Clear all.'));
     return [top, notices, KpiRow(kp), h('div', { className: 'ov-chartrow' }, trend, latest), filterBar, h('div', { className: catList ? 'ov-lower' : '' }, catCard, catList), logCard, dayFold, howFold];
   }
