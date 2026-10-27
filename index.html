@@ -1479,6 +1479,27 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
 .ov-mval { overflow-wrap: anywhere; }
 .pg-topic__head:disabled { cursor: default; color: inherit; opacity: 1; }
 @media print { .fa-host, .fa-toasts, .mcs-shell__side, .ov-actions { display: none !important; } }
+/* Settings menu (sidebar footer) */
+.sm-wrap { position: relative; width: 100%; }
+.sm-trigger { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.sm-trigger:hover { background: var(--surface-hover); }
+.sm-trigger[aria-expanded="true"] { border-color: var(--line-strong); }
+.sm-trigger[aria-expanded="true"] .sm-chev { transform: rotate(180deg); }
+.sm-chev { margin-left: auto; color: var(--ink-muted); transition: transform .15s; }
+.sm-avatar { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--surface-sunken); color: var(--ink); }
+.sm-pop { position: absolute; left: 0; right: 0; top: auto; bottom: calc(100% + 8px); z-index: 70; display: flex; flex-direction: column; gap: 4px; padding: 8px; min-width: 220px; }
+.sm-head { display: flex; align-items: center; gap: 10px; padding: 6px 6px 8px; font-size: 14px; }
+.sm-sec { display: flex; flex-direction: column; gap: 6px; padding: 4px 6px 6px; }
+.sm-label { font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-muted); }
+.sm-sep { height: 1px; background: var(--line); margin: 4px 0; }
+.sm-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 40px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.sm-item:hover, .sm-item:focus-visible { background: var(--surface-hover); }
+.sm-danger { color: var(--problem-text); }
+.sm-foot { display: flex; flex-direction: column; gap: 2px; }
+.sm-link { color: var(--ink-muted); min-height: 38px; }
+.sm-link:hover { color: var(--ink); }
+.sm-user { border-color: transparent; background: transparent; }
+.sm-user .sm-avatar { background: var(--brand); color: var(--on-brand); font-size: 12px; font-weight: 700; letter-spacing: .02em; }
 </style>
 <script>
 /* ==================================================================== LOGIC-START
@@ -3896,6 +3917,33 @@ async function api(body) {
       return h('button', { key: o[0], type: 'button', 'aria-pressed': props.value === o[0], className: props.value === o[0] ? 'is-on' : '', onClick: function () { props.onChange(o[0]); } }, o[1]);
     }));
   }
+  /* Sidebar footer: one "Settings" button; its menu holds the look (Light / Dark / Auto, this browser only), Help, Print and Log out. */
+  function SettingsMenu(props) {
+    var _o = useState(false), open = _o[0], setOpen = _o[1], ref = useRef(null);
+    useEffect(function () {
+      if (!open) return;
+      function onDoc(e) { if (ref.current && !ref.current.contains(e.target)) setOpen(false); }
+      function onKey(e) { if (e.key === 'Escape') { setOpen(false); var b = ref.current && ref.current.querySelector('.sm-trigger'); if (b) b.focus(); } }
+      document.addEventListener('pointerdown', onDoc); document.addEventListener('keydown', onKey);
+      return function () { document.removeEventListener('pointerdown', onDoc); document.removeEventListener('keydown', onKey); };
+    }, [open]);
+    var s = session.get(), until = s && s.expiresAt ? 'Logged in until ' + stamp(s.expiresAt) : 'Logged in';
+    var item = function (icon, label, onClick, cls) { return h('button', { type: 'button', role: 'menuitem', className: 'sm-item' + (cls ? ' ' + cls : ''), onClick: function () { setOpen(false); onClick(); } }, h(M.Icon, { name: icon, size: 18 }), h('span', null, label)); };
+    /* Help and Print sit above the user row as plain links; the user row opens Settings (appearance) and Log out. */
+    var link = function (icon, label, onClick) { return h('button', { type: 'button', className: 'sm-item sm-link', onClick: onClick }, h(M.Icon, { name: icon, size: 18 }), h('span', null, label)); };
+    return h('div', { className: 'sm-foot' },
+      link('info', 'Help', props.onHelp), link('download', 'Print', props.onPrint),
+      h('div', { className: 'sm-sep', role: 'separator' }),
+      h('div', { className: 'sm-wrap', ref: ref },
+        open ? h('div', { className: 'mcs-pop sm-pop', role: 'menu', 'aria-label': 'Settings and account' },
+          h('div', { className: 'sm-sec' }, h('span', { className: 'sm-label' }, 'Settings · Appearance'), props.themeSwitch, h('span', { style: S.caption }, 'Saved in this browser only.')),
+          h('div', { className: 'sm-sep', role: 'separator' }),
+          item('x', 'Log out', props.onLogout, 'sm-danger')) : null,
+        h('button', { type: 'button', className: 'sm-trigger sm-user', 'aria-haspopup': 'menu', 'aria-expanded': open, 'aria-label': 'Machino team: settings and log out', onClick: function () { setOpen(!open); } },
+          h('span', { className: 'sm-avatar', 'aria-hidden': true }, 'MT'),
+          col({ gap: 0, minWidth: 0, alignItems: 'flex-start' }, h('strong', null, 'Machino team'), h('span', { style: S.caption }, until)),
+          h(M.Icon, { name: 'chevron-down', size: 16, className: 'sm-chev' }))));
+  }
   function App() {
     useStore();
     var _pg = useState(function () { return PAGE_FROM_HASH[hashFirst()] || 'overview'; }), page = _pg[0], setPageRaw = _pg[1];
@@ -3930,9 +3978,7 @@ async function api(body) {
     var themeSwitch = h(ThemeSwitch, { value: theme, onChange: setTheme });
     if (D.locked) return h('div', { className: 'v-root' }, h('div', { id: 'fa-layer' }), h(ToastHost), h(LoginScreen, { themeSwitch: themeSwitch }));
     var nav = { items: NAV_ITEMS, value: page, onChange: go, brand: { logoSrc: LOGO, name: 'Machino', sub: 'Customer service' },
-      footer: col({ gap: 4 }, themeSwitch, h(M.Button, { variant: 'secondary', size: 'sm', icon: 'info', onClick: openHelp }, 'Help'),
-        h(M.Button, { variant: 'ghost', size: 'sm', onClick: function () { try { window.print(); } catch (e) { /* jsdom */ } } }, 'Print'),
-        h(M.Button, { variant: 'ghost', size: 'sm', onClick: function () { setHelp(false); logout(); } }, 'Log out')) };
+      footer: h(SettingsMenu, { themeSwitch: themeSwitch, onHelp: openHelp, onPrint: function () { try { window.print(); } catch (e) { /* jsdom */ } }, onLogout: function () { setHelp(false); logout(); } }) };
     var V = derive();
     var shared = { V: V, go: go, openHelp: openHelp };
     var first = !D.fetchedAt && !D.readA && !D.readB && !D.readE;
