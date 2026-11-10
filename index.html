@@ -1512,7 +1512,15 @@ function(a,b,c){if(!Vd(b))throw Error(m(200));return Wd(null,a,b,!1,c)};Q.unmoun
 .b2b-item { position: relative; display: flex; align-items: center; gap: 12px; padding: 12px 14px 12px 18px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); overflow: hidden; }
 .b2b-item::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--b2b-c); }
 .b2b-item:hover { background: var(--surface-hover); }
-.b2b-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.b2b-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.b2b-main:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 4px; border-radius: 6px; }
+.b2b-more { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--ink-muted); }
+.b2b-chev { transition: transform .15s; }
+.b2b-item.is-open { flex-wrap: wrap; align-items: stretch; }
+.b2b-item.is-open .b2b-chev { transform: rotate(180deg); }
+.b2b-body { flex: 1 1 100%; display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+.b2b-text { max-height: 420px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 21px; color: var(--ink); padding: 12px 14px; border-radius: var(--radius-sm); background: var(--surface-sunken); }
+.b2b-bodyfoot { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
 .b2b-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .b2b-type { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
 .b2b-type i { width: 7px; height: 7px; border-radius: 999px; background: var(--b2b-c); }
@@ -3724,7 +3732,9 @@ async function api(body) {
     { id: 'event', label: 'Event / exhibition', short: 'Event', color: 'ch-tiktok', soft: 'ch-tiktok-soft', text: 'ink', why: /event \/ exhibition/ },
     { id: 'pitch', label: 'Sales pitch / services', short: 'Sales pitch', color: 'ink-faint', soft: 'surface-sunken', text: 'ink-muted', why: /vendor \/ marketing|business services pitch/ }
   ];
-  var B2B_SKIP = /courier|job application|academic|auto-reply|automatic notice|internal|machino staff/i;
+  /* The email text (business emails only, Amani 10 Nov 2026) is the Email Log's last column; the logic block reads columns by name. */
+  if (typeof EMAIL_CFG !== 'undefined' && EMAIL_CFG.LOG && !EMAIL_CFG.LOG.body) EMAIL_CFG.LOG.body = 'Email text (business emails only)';
+  var B2B_SKIP =/courier|job application|academic|auto-reply|automatic notice|internal|machino staff/i;
   var B2B_TYPE = {}; B2B_TYPES.forEach(function (t) { B2B_TYPE[t.id] = t; });
   /** Which business type is this Email Log row? null = not a business email. Display only. */
   function b2bType(r) {
@@ -3744,7 +3754,7 @@ async function api(body) {
   var B2BF = Object.assign({}, B2B_DEFAULT);
   function B2bPage(p) {
     var V = p.V, re = D.readE;
-    var _f = useState(B2BF), f = _f[0], setRaw = _f[1];
+    var _f = useState(B2BF), f = _f[0], setRaw = _f[1], _o = useState(null), openKey = _o[0], setOpen = _o[1];
     function setF(patch) { B2BF = Object.assign({}, f, patch); setRaw(B2BF); }
     var log = re && re.log ? re.log.filter(function (r) { return !/^separate/i.test(String(r.counted || '')); }) : null;
     var on = D.emailLogOn === true || (D.emailLogOn === undefined && !!log);
@@ -3757,6 +3767,7 @@ async function api(body) {
         h('li', null, 'An email is shown here when the email counter left it out as a collaboration, sponsorship, event or sales pitch, or when its subject talks about a collab, partnership, wholesale, bulk or corporate order, reseller or distributor.'),
         B2B_TYPES.map(function (t) { return h('li', { key: t.id }, h('strong', null, t.label), t.id === 'wholesale' ? ': wholesale, bulk, corporate orders, resellers and distributors. These can also be counted as customer enquiries.' : t.id === 'collab' ? ': influencers, creators, brand collabs and partnership offers.' : t.id === 'sponsor' ? ': sponsorship letters and award nominations.' : t.id === 'event' ? ': exhibition, bazaar and festival invitations.' : ': SEO, marketing agencies, company setup and other services. Hidden unless you switch it on.'); }),
         h('li', null, 'Emails from known platforms (TikTok, Shopify, couriers and so on), newsletters in the Promotions tab and automatic emails are never listed. Job applications and student research requests are not business emails.'),
+        h('li', null, 'Click an email to read it here. The email text is saved for business emails only (never for customer emails), from 10 Nov 2026, up to 5,000 characters, without the earlier emails quoted below a reply. Pictures and attachments are only in Gmail.'),
         h('li', null, 'The sorting uses keywords, so it can be wrong now and then. Open the email in Gmail to be sure. Reply in Gmail; this page cannot send anything.')));
     if (!on || !log) {
       return [head, h('section', { className: 'mcs-card' }, h(M.EmptyState, { kind: 'empty', icon: 'users', title: on ? 'Loading the Email Log…' : 'Customer email details are off' },
@@ -3774,7 +3785,7 @@ async function api(body) {
     var q = String(f.q || '').trim().toLowerCase();
     var shown = inRange.filter(function (r) {
       if (f.type) { if (r.b2b !== f.type) return false; } else if (!f.pitches && r.b2b === 'pitch') return false;
-      if (q && [r.from, r.address, r.subject, r.keywords, B2B_TYPE[r.b2b].label].join(' ').toLowerCase().indexOf(q) === -1) return false;
+      if (q && [r.from, r.address, r.subject, r.keywords, B2B_TYPE[r.b2b].label, r.body].join(' ').toLowerCase().indexOf(q) === -1) return false;
       return true;
     });
     var noPitch = function (list) { return list.filter(function (r) { return r.b2b !== 'pitch'; }); };
@@ -3804,15 +3815,24 @@ async function api(body) {
     var dayName = function (iso) { return iso === today ? 'Today' : iso === toIso(Date.now() - 86400000) ? 'Yesterday' : emDayLabel(isoDay(iso)); };
     var item = function (r, i) {
       var t = B2B_TYPE[r.b2b], dom = b2bDomain(r.address), company = dom && !B2B_FREE.test(dom) ? dom : '';
-      return h('li', { key: r.iso + r.time + i, className: 'b2b-item', style: { '--b2b-c': 'var(--' + t.color + ')' } },
-        h('div', { className: 'b2b-main' },
-          h('div', { className: 'b2b-top' },
+      var key = r.iso + ' ' + r.time + ' ' + i + ' ' + (r.link || ''), isOpen = openKey === key, body = String(r.body || '').replace(/^'(?=[=+\-@])/, '');
+      var gm = gmailLink(r.link) ? h('a', { className: 'b2b-open', href: r.link, target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'Open in Gmail: ' + (r.subject || 'email') }, 'Open in Gmail', h(M.Icon, { name: 'chevron-right', size: 16 })) : null;
+      return h('li', { key: key, className: 'b2b-item' + (isOpen ? ' is-open' : ''), style: { '--b2b-c': 'var(--' + t.color + ')' } },
+        h('button', { type: 'button', className: 'b2b-main', 'aria-expanded': isOpen, onClick: function () { setOpen(isOpen ? null : key); } },
+          h('span', { className: 'b2b-top' },
             h('span', { className: 'b2b-type', style: { background: 'var(--' + t.soft + ')', color: 'var(--' + t.text + ')' } }, h('i', { 'aria-hidden': true }), t.label),
             /^yes/i.test(String(r.counted || '')) ? h('span', { className: 'b2b-tag', title: 'Also counted as a customer enquiry in the email numbers' }, 'Also a customer enquiry') : null,
             h('span', { className: 'b2b-time' }, r.time || '')),
           h('strong', { className: 'b2b-subject' }, r.subject || '(no subject)'),
-          h('span', { className: 'b2b-from' }, h('span', null, r.from || r.address || DASH), company ? h('span', { className: 'b2b-co' }, company) : r.address && r.from ? h('span', { className: 'b2b-co' }, r.address) : null)),
-        gmailLink(r.link) ? h('a', { className: 'b2b-open', href: r.link, target: '_blank', rel: 'noopener noreferrer', 'aria-label': 'Open in Gmail: ' + (r.subject || 'email') }, 'Open in Gmail', h(M.Icon, { name: 'chevron-right', size: 16 })) : null);
+          h('span', { className: 'b2b-from' }, h('span', null, r.from || r.address || DASH), company ? h('span', { className: 'b2b-co' }, company) : r.address && r.from ? h('span', { className: 'b2b-co' }, r.address) : null),
+          h('span', { className: 'b2b-more' }, isOpen ? 'Hide email' : body ? 'Read email' : 'Details', h(M.Icon, { name: 'chevron-down', size: 16, className: 'b2b-chev' }))),
+        isOpen ? h('div', { className: 'b2b-body' },
+          body ? h('div', { className: 'b2b-text', tabIndex: 0, 'aria-label': 'Email text' }, body)
+            : h('p', { className: 'ov-note' }, 'The email text is not saved for this email (emails before 10 Nov 2026, or Gmail could not read it). Open it in Gmail to read it.'),
+          h('div', { className: 'b2b-bodyfoot' },
+            h('span', { style: S.caption }, [r.address, emDayLabel(isoDay(r.iso)) + (r.time ? ' ' + r.time : '')].filter(Boolean).join(' · ') + (body && body.length >= 4999 ? ' · Long email: the rest is in Gmail' : '')),
+            gm)) : null,
+        isOpen ? null : gm);
     };
     var MAX = 150, shownN = 0;
     var listBody = shown.length
@@ -3823,7 +3843,7 @@ async function api(body) {
         }))
       : h(M.EmptyState, { kind: all.length ? 'no-results' : 'empty', icon: 'users', title: all.length ? 'No business emails match' : 'No business emails yet' },
           all.length ? 'Try another type, a longer time range, or press Reset.' : 'None of the ' + fmt(log.length) + ' emails in the log looks like a collab, partnership, wholesale, sponsorship or event email.');
-    var listCard = Card('Business emails', 'Newest first. Open an email in Gmail to read and reply. The type is a best guess from keywords.',
+    var listCard = Card('Business emails', 'Newest first. Click an email to read it here; reply in Gmail. The type is a best guess from keywords.',
       h('span', { style: S.caption, role: 'status', 'aria-live': 'polite' }, shown.length > MAX ? 'Newest ' + MAX + ' of ' + fmt(shown.length) : fmt(shown.length) + ' email' + (shown.length === 1 ? '' : 's')), [listBody]);
     return [head, kpis, filters, listCard, howFold];
   }
